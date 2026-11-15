@@ -75,12 +75,7 @@ fun HomeSectionRow(
     val showProgress = isContinueWatching
     val offersRemoval = onRemoveFromHome != null && section.sectionType in HomeDismissal.sectionTypes
 
-    // An audiobook row keeps square cover cards even when it resumes: the
-    // cover is square with no backdrop, so a 16:9 still would crop it. The
-    // poster card carries its own progress bar (iOS HomeFeedRow, TV Continue
-    // Listening).
-    val isAudiobookRow = areAllAudiobooks(rowItems.map { it.type })
-    val useBackdrop = !isAudiobookRow && (showProgress || section.sectionType == "next_up")
+    val useBackdrop = section.usesBackdropCards(rowItems)
     val cardStyle = if (useBackdrop) CardStyle.Backdrop else CardStyle.Poster
 
     MediaRow(
@@ -133,3 +128,13 @@ private fun HomeCollectionRow(
         showCounts = showCounts,
     )
 }
+
+/**
+ * Continue Watching and Next Up rows draw wide episode cards; their full pages do too.
+ * An audiobook row keeps square cover cards even when it resumes: the cover is
+ * square with no backdrop, so a 16:9 still would crop it. The poster card carries
+ * its own progress bar (iOS HomeFeedRow, TV Continue Listening).
+ */
+internal fun ResolvedSection.usesBackdropCards(rowItems: List<SectionItem> = items): Boolean =
+    (sectionType == "continue_watching" || sectionType == "in_progress" || sectionType == "next_up") &&
+        !areAllAudiobooks(rowItems.map { it.type })

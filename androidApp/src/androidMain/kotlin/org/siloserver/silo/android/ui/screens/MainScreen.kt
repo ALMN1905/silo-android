@@ -82,6 +82,7 @@ import org.siloserver.silo.android.ui.navigation.visibleMobileTabs
 import org.siloserver.silo.android.ui.navigation.continueWatchingDetailRoute
 import org.siloserver.silo.android.ui.screens.calendar.CalendarScreen
 import org.siloserver.silo.android.ui.screens.home.HomeScreen
+import org.siloserver.silo.android.ui.screens.home.usesBackdropCards
 import org.siloserver.silo.android.cast.SiloCastController
 import org.siloserver.silo.android.ui.screens.cast.SiloCastMiniBar
 import org.siloserver.silo.android.ui.screens.cast.showsMiniBar
@@ -632,7 +633,13 @@ fun MainScreen(
                                 playVideo(contentId, resumePositionSeconds = resumePositionSeconds)
                             },
                             onExploreSection = { section ->
-                                navController.navigate(Route.SectionBrowse(section.id, context.sectionTitle(section)).route)
+                                navController.navigate(
+                                    Route.SectionBrowse(
+                                        section.id,
+                                        context.sectionTitle(section),
+                                        backdropCards = section.usesBackdropCards(),
+                                    ).route,
+                                )
                             },
                             onCollectionClick = { card ->
                                 sectionCollectionCardRoute(card)?.let { navController.navigate(it) }
@@ -673,7 +680,13 @@ fun MainScreen(
                             },
                             onExploreSection = { section, libraryId, mediaScope ->
                                 navController.navigate(
-                                    Route.SectionBrowse(section.id, context.sectionTitle(section), libraryId, mediaScope).route,
+                                    Route.SectionBrowse(
+                                        section.id,
+                                        context.sectionTitle(section),
+                                        libraryId,
+                                        mediaScope,
+                                        section.usesBackdropCards(),
+                                    ).route,
                                 )
                             },
                             viewModel = requireNotNull(librariesViewModel),

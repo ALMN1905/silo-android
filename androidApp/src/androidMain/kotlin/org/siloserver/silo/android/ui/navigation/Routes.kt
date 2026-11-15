@@ -257,15 +257,18 @@ sealed class Route(val route: String) {
         val title: String,
         val libraryId: Int? = null,
         val mediaScope: String? = null,
+        /** The row shows wide episode cards (Continue Watching, Next Up); its page does too. */
+        val backdropCards: Boolean = false,
     ) : Route(
         buildString {
             append("section/${sectionId.routeEncode()}?title=${title.routeEncode()}")
             libraryId?.let { append("&libraryId=$it") }
             mediaScope?.let { append("&mediaScope=${it.routeEncode()}") }
+            if (backdropCards) append("&backdrop=1")
         },
     ) {
         companion object {
-            const val ROUTE = "section/{sectionId}?title={title}&libraryId={libraryId}&mediaScope={mediaScope}"
+            const val ROUTE = "section/{sectionId}?title={title}&libraryId={libraryId}&mediaScope={mediaScope}&backdrop={backdrop}"
         }
     }
 

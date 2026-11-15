@@ -42,6 +42,8 @@ fun SectionBrowseScreen(
     args: SectionBrowseArgs,
     onBackClick: () -> Unit,
     onItemClick: (BrowseItem) -> Unit,
+    /** Wide episode cards like the row's own (Continue Watching, Next Up), not posters. */
+    backdropCards: Boolean = false,
     viewModel: SectionBrowseViewModel = koinViewModel(
         key = "section-${args.libraryId ?: "home"}-${args.sectionId}-${args.mediaScope.orEmpty()}",
         parameters = { parametersOf(args) },
@@ -83,6 +85,7 @@ fun SectionBrowseScreen(
                         state.items.firstOrNull { it.contentId == contentId }?.let(onItemClick)
                     },
                     onLoadMore = viewModel::loadMore,
+                    backdropCards = backdropCards,
                     modifier = Modifier.fillMaxSize(),
                 )
                 if (state.loadMoreError != null) {

@@ -1839,6 +1839,11 @@ fun AppNavigation(
                     nullable = true
                     defaultValue = null
                 },
+                navArgument("backdrop") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
             ),
         ) { backStackEntry ->
             val libraryId = backStackEntry.arguments?.getString("libraryId")?.toIntOrNull()
@@ -1850,6 +1855,7 @@ fun AppNavigation(
                     mediaScope = backStackEntry.arguments?.getString("mediaScope")
                         ?.takeIf { it in setOf("movie", "series") },
                 ),
+                backdropCards = backStackEntry.arguments?.getString("backdrop") == "1",
                 onBackClick = { navController.popBackStack() },
                 onItemClick = { item -> navController.navigate(sectionBrowseDetailRoute(item, libraryId)) },
             )

@@ -37,6 +37,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import org.siloserver.silo.android.ui.components.BackdropCard
 import org.siloserver.silo.android.ui.components.MediaCard
 import org.siloserver.silo.android.ui.components.MediaCardPlaceholder
 import org.siloserver.silo.android.ui.components.MediaGridDefaults
@@ -91,6 +92,8 @@ fun CatalogGrid(
     viewDensity: CatalogViewDensity = CatalogViewDensity.Normal,
     bottomContentInset: Dp = 0.dp,
     topContentInset: Dp = 0.dp,
+    /** Wide episode cards, as in a Continue Watching or Next Up row, instead of posters. */
+    backdropCards: Boolean = false,
     header: (@Composable () -> Unit)? = null,
     /** Hoisted by a caller that keeps the position while the grid is away, or scrolls it. */
     gridState: LazyGridState = rememberLazyGridState(),
@@ -105,7 +108,12 @@ fun CatalogGrid(
     val placeholderAspectRatio = remember(uniqueItems) { sharedArtworkAspectRatio(uniqueItems.map { it.type }) }
     // The session density picks the base cell; the server-driven poster-size
     // preference multiplies it, shifting the adaptive column count.
-    val cardWidth = viewDensity.minCardWidth * LocalCardPresentation.current.posterSize.posterScale
+    val cardWidth = if (backdropCards) {
+        // Two columns on a phone, more on a tablet.
+        150.dp * LocalCardPresentation.current.posterSize.posterScale
+    } else {
+        viewDensity.minCardWidth * LocalCardPresentation.current.posterSize.posterScale
+    }
     val diagnosticsKeySnapshot = remember(items) {
         DiagnosticsListSnapshot.fromKeys(items.map { it.contentId })
     }
@@ -204,7 +212,7 @@ fun CatalogGrid(
                 ) { position ->
                     val item = pager.item(position, pages)
                     if (item != null) {
-                        CatalogGridCard(item, cardWidth, cardSubtitle, onItemClick, reserveTextLines = true)
+                        CatalogGridCard(item, cardWidth, cardSubtitle, onItemClick, reserveTextLines = true, backdropCards = backdropCards)
                     } else {
                         MediaCardPlaceholder(width = cardWidth, artworkAspectRatio = placeholderAspectRatio)
                     }
@@ -215,7 +223,7 @@ fun CatalogGrid(
                     key = { it.contentId },
                     contentType = { item -> item.type },
                 ) { item ->
-                    CatalogGridCard(item, cardWidth, cardSubtitle, onItemClick)
+                    CatalogGridCard(item, cardWidth, cardSubtitle, onItemClick, backdropCards = backdropCards)
                 }
             }
 
@@ -267,12 +275,46 @@ private fun CatalogGridCard(
     cardSubtitle: ((BrowseItem) -> String?)?,
     onItemClick: (String) -> Unit,
     reserveTextLines: Boolean = false,
+    backdropCards: Boolean = false,
 ) {
     val heroHandoff = LocalHeroSourceHandoff.current
     val (actions, userState, positionSeconds) = rememberBrowseItemCardActions(item)
     val spoilerPrefs = LocalEpisodeSpoilerPrefs.current
     val hideArtwork = EpisodeSpoilers.hidesBrowseArtwork(item, spoilerPrefs, userState.played, positionSeconds = positionSeconds)
     val hideDetailArtwork = EpisodeSpoilers.hidesBrowseArtwork(item, spoilerPrefs, userState.played, selectBackdrop = true, positionSeconds = positionSeconds)
+    if (backdropCards) {
+        val duration = item.durationSeconds
+        val resumeAt = item.positionSeconds
+        BackdropCard(
+            title = item.title,
+            backdropUrl = item.backdropUrl?.takeIf { it.isNotBlank() } ?: item.posterUrl,
+            backdropThumbhash = if (!item.backdropUrl.isNullOrBlank()) item.backdropThumbhash else item.posterThumbhash,
+            hideArtwork = hideArtwork,
+            seriesTitle = item.seriesTitle,
+            seasonNumber = item.seasonNumber,
+            episodeNumber = item.episodeNumber,
+            progress = if (resumeAt != null && duration != null && duration > 0) {
+                (resumeAt / duration).toFloat().coerceIn(0f, 1f)
+            } else {
+                null
+            },
+            remainingMinutes = if (resumeAt != null && duration != null && duration > 0 && resumeAt < duration) {
+                ((duration - resumeAt) / 60.0).toInt()
+            } else {
+                null
+            },
+            onClick = {
+                heroHandoff?.pendingArtworkUrl = (item.backdropUrl ?: item.posterUrl).takeUnless { hideDetailArtwork }
+                heroHandoff?.pendingArtworkThumbhash = if (hideDetailArtwork) null else item.backdropThumbhash ?: item.posterThumbhash
+                onItemClick(item.contentId)
+            },
+            modifier = Modifier.fillMaxWidth(),
+            userState = userState,
+            overlay = OverlayDataExtractor.fromBrowseItem(item),
+            actions = actions,
+        )
+        return
+    }
     MediaCard(
         hideArtwork = hideArtwork,
         hideDetailArtwork = hideDetailArtwork,
