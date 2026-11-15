@@ -43,6 +43,8 @@ fun TvSectionBrowseScreen(
     args: SectionBrowseArgs,
     onItemClick: (BrowseItem) -> Unit,
     onBack: () -> Unit,
+    /** Wide episode cards like the row's own (Continue Watching, Next Up), not posters. */
+    backdropCards: Boolean = false,
     viewModel: SectionBrowseViewModel = koinViewModel(
         key = sectionBrowseKey(args),
         parameters = { parametersOf(args) },
@@ -96,7 +98,8 @@ fun TvSectionBrowseScreen(
                     }
                 },
                 onLoadMore = viewModel::loadMore,
-                fixedColumnCount = tvPresetGridColumns(6),
+                fixedColumnCount = tvPresetGridColumns(if (backdropCards) 4 else 6),
+                backdropCards = backdropCards,
                 contentPadding = PaddingValues(
                     start = Spacing.safeArea,
                     top = Spacing.xxl,

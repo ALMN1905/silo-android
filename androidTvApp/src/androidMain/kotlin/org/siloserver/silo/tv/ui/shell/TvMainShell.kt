@@ -154,6 +154,7 @@ import org.siloserver.silo.tv.ui.screens.calendar.TvCalendarScreen
 import org.siloserver.silo.tv.ui.screens.collections.TvCollectionsScreen
 import org.siloserver.silo.tv.ui.screens.home.TvHomeScreen
 import org.siloserver.silo.tv.ui.screens.home.tvHomeBrowseSectionId
+import org.siloserver.silo.tv.ui.screens.home.tvHomeRowStyle
 import org.siloserver.silo.tv.ui.screens.libraries.TvLibrariesScreen
 import org.siloserver.silo.tv.ui.screens.personal.TvFavoritesScreen
 import org.siloserver.silo.tv.ui.screens.personal.TvHistoryScreen
@@ -219,7 +220,13 @@ fun TvMainShell(
     ) -> Unit,
     onOpenCollectionDetail: (collectionId: String, title: String) -> Unit,
     /** Opens a row's full page: a Home row when libraryId is null. */
-    onOpenSectionBrowse: (sectionId: String, title: String, libraryId: Int?, mediaScope: String?) -> Unit,
+    onOpenSectionBrowse: (
+        sectionId: String,
+        title: String,
+        libraryId: Int?,
+        mediaScope: String?,
+        backdropCards: Boolean,
+    ) -> Unit,
     /** Runs the sign-out the user chose in [TvSignOutDialog]. */
     onSignOut: (removeServer: Boolean) -> Unit,
     /** Opens the open account's picker. */
@@ -609,13 +616,25 @@ fun TvMainShell(
         restoreContentAfterDetail = true
         detailReturnRoot = TvMainRoute.Home.route
         suppressFeedRefreshAfterDetail = true
-        onOpenSectionBrowse(section.tvHomeBrowseSectionId(), context.sectionTitle(section), null, null)
+        onOpenSectionBrowse(
+            section.tvHomeBrowseSectionId(),
+            context.sectionTitle(section),
+            null,
+            null,
+            section.tvHomeRowStyle() == org.siloserver.silo.tv.ui.components.TvRowStyle.Backdrop,
+        )
     }
     val openLibrarySection: (org.siloserver.silo.model.section.ResolvedSection, Int, String?) -> Unit =
         { section, libraryId, mediaScope ->
             restoreContentAfterDetail = true
             detailReturnRoot = null
-            onOpenSectionBrowse(section.id, context.sectionTitle(section), libraryId, mediaScope)
+            onOpenSectionBrowse(
+                section.id,
+                context.sectionTitle(section),
+                libraryId,
+                mediaScope,
+                section.tvHomeRowStyle() == org.siloserver.silo.tv.ui.components.TvRowStyle.Backdrop,
+            )
         }
     var contentUpFallback by remember { mutableStateOf<((Boolean) -> Boolean)?>(null) }
     // Feeds that registered the up-fallback slot, were superseded by a newer

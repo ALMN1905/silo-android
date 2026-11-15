@@ -321,16 +321,20 @@ sealed class TvRoute(val route: String) {
         val title: String,
         val libraryId: Int? = null,
         val mediaScope: String? = null,
+        /** The row shows wide episode cards (Continue Watching, Next Up); its page does too. */
+        val backdropCards: Boolean = false,
     ) : TvRoute(
         "section/${sectionId.routeEncode()}?title=${title.routeEncode()}" +
-            "&libraryId=${libraryId?.toString().orEmpty()}&mediaScope=${mediaScope.orEmpty().routeEncode()}",
+            "&libraryId=${libraryId?.toString().orEmpty()}&mediaScope=${mediaScope.orEmpty().routeEncode()}" +
+            "&backdrop=${if (backdropCards) "1" else ""}",
     ) {
         companion object {
-            const val ROUTE = "section/{sectionId}?title={title}&libraryId={libraryId}&mediaScope={mediaScope}"
+            const val ROUTE = "section/{sectionId}?title={title}&libraryId={libraryId}&mediaScope={mediaScope}&backdrop={backdrop}"
             const val ARG_SECTION_ID = "sectionId"
             const val ARG_TITLE = "title"
             const val ARG_LIBRARY_ID = "libraryId"
             const val ARG_MEDIA_SCOPE = "mediaScope"
+            const val ARG_BACKDROP = "backdrop"
         }
     }
 

@@ -123,6 +123,8 @@ fun TvCatalogGrid(
         tvArtworkAspectRatioForMediaType(item.type)
     },
     onBrowseItemClick: ((BrowseItem) -> Unit)? = null,
+    /** Wide episode cards, as in a Continue Watching or Next Up row, instead of posters. */
+    backdropCards: Boolean = false,
     header: (@Composable () -> Unit)? = null,
     footer: (@Composable () -> Unit)? = null,
     emptyState: (@Composable () -> Unit)? = null,
@@ -310,7 +312,46 @@ fun TvCatalogGrid(
                 }
                 // A box set card opens the box set and has no item menu.
                 val boxSet = item.boxSetCard
-                TvMediaCard(
+                if (backdropCards && boxSet == null) {
+                    val position = item.positionSeconds
+                    val duration = item.durationSeconds
+                    TvEpisodeCard(
+                        title = item.title,
+                        stillUrl = item.backdropUrl?.takeIf { it.isNotBlank() } ?: item.posterUrl,
+                        stillThumbhash = if (!item.backdropUrl.isNullOrBlank()) item.backdropThumbhash else item.posterThumbhash,
+                        hideStill = hideArtwork,
+                        seriesTitle = item.seriesTitle,
+                        seasonNumber = item.seasonNumber,
+                        episodeNumber = item.episodeNumber,
+                        mediaType = item.type,
+                        progress = if (position != null && duration != null && duration > 0) {
+                            (position / duration).toFloat().coerceIn(0f, 1f)
+                        } else {
+                            null
+                        },
+                        year = item.year.takeIf { it > 0 },
+                        onClick = { onBrowseItemClick?.invoke(item) ?: onItemClick(item.contentId) },
+                        focusRequester = if (isRestoreTarget) {
+                            restoreItemFocusRequester
+                        } else {
+                            firstItemFocusRequester.takeIf { index == 0 }
+                        },
+                        cardModifier = if (index == 0) firstItemCardModifier else Modifier,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onFocusChanged {
+                                onItemFocusedAtIndex(
+                                    item,
+                                    rawIndexByContentId[item.contentId] ?: index,
+                                    it.hasFocus,
+                                )
+                            },
+                        userState = userState,
+                        overlay = OverlayDataExtractor.fromBrowseItem(item),
+                        actions = actions,
+                        contentKey = item.contentId,
+                    )
+                } else TvMediaCard(
                     hideArtwork = hideArtwork,
                     title = item.title,
                     posterUrl = item.posterUrl ?: boxSet?.posterUrl,
