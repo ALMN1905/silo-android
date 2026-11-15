@@ -32,6 +32,8 @@ internal class TrackLabelStrings(
     val stereo: String,
     /** The interface language, which names track languages. */
     val languageLocale: Locale = LocaleFormat.interfaceLocale(),
+    /** An audio bitrate in kbps ("640kbps"); takes the formatted number. */
+    val bitrateKbps: (String) -> String = { "${it}kbps" },
 )
 
 @Composable
@@ -50,6 +52,7 @@ internal fun trackLabelStrings(): TrackLabelStrings {
         server = resources.getString(CommonR.string.player_tracks_sourceServer),
         mono = resources.getString(CommonR.string.detail_mono),
         stereo = resources.getString(CommonR.string.detail_stereo),
+        bitrateKbps = { resources.getString(CommonR.string.detail_bitrateKbps, it) },
     ) }
 }
 
@@ -83,6 +86,8 @@ internal fun audioTrackPresentation(track: AudioTrack, index: Int, strings: Trac
         descriptor.takeIf { language != null },
         audioCodecDisplayName(track.codec),
         audioChannelsDisplayName(track.channels, strings),
+        // The server sends audio bitrate in kbps and omits it for some codecs.
+        track.bitrate?.takeIf { it > 0 }?.let { strings.bitrateKbps(LocaleFormat.integer(it)) },
         strings.default.takeIf { track.isDefault },
     ).joinToString(" · ").ifBlank { null }
     return TrackPresentation(title = title, detail = detail)
