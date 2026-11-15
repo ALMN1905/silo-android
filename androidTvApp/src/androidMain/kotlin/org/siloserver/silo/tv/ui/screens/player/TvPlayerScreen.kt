@@ -142,7 +142,7 @@ import org.siloserver.silo.common.player.NoticeTone
 import org.siloserver.silo.common.player.PlayerNotice
 import org.siloserver.silo.common.player.video.markerSkipTarget
 import org.siloserver.silo.common.player.video.MarkerSkipTarget
-import org.siloserver.silo.common.player.video.ManualMarkerKind
+import org.siloserver.silo.common.player.video.skipLabelRes
 import org.siloserver.silo.common.player.SessionState
 import org.siloserver.silo.common.player.rememberPlayerSpinnerVisible
 import org.siloserver.silo.common.player.SiloPlaybackService
@@ -2443,7 +2443,7 @@ fun TvPlayerScreen(
                             .firstOrNull { row -> row.checked }
                             ?.let { row -> tvSubtitleRowParts(row.label).title }
                             ?: stringResource(CommonR.string.player_tracks_subtitlesOff),
-                        skipLabel = manualSkipTarget?.let { stringResource(manualMarkerSkipLabel(it.kind)) },
+                        skipLabel = manualSkipTarget?.let { stringResource(it.kind.skipLabelRes()) },
                         onSkip = if (manualSkipTarget != null) {
                             { handleManualMarkerSelect() }
                         } else {
@@ -3376,12 +3376,6 @@ private fun formatSleepCountdown(seconds: Int): String {
     } else {
         stringResource(CommonR.string.catalog_runtimeSeconds, sec)
     }
-}
-
-private fun manualMarkerSkipLabel(kind: ManualMarkerKind): Int = when (kind) {
-    ManualMarkerKind.Recap -> CommonR.string.marker_skipRecap
-    ManualMarkerKind.Intro -> CommonR.string.introSkip_pill_skip
-    ManualMarkerKind.Credits -> CommonR.string.marker_skipCredits
 }
 
 @Composable
@@ -4574,7 +4568,7 @@ private fun TvPlayerOverlays(
                     if (manualSkipTarget != null) {
                         TvMarkerSkipPill(
                             modifier = Modifier.onFocusChanged { onMarkerPillFocusChanged(it.hasFocus) },
-                            label = stringResource(manualMarkerSkipLabel(manualSkipTarget.kind)),
+                            label = stringResource(manualSkipTarget.kind.skipLabelRes()),
                             onSelect = onManualMarkerSelect,
                             onSeek = onSkipPillSeek,
                         )
