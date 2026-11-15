@@ -142,7 +142,7 @@ import org.siloserver.silo.common.player.NoticeTone
 import org.siloserver.silo.common.player.PlayerNotice
 import org.siloserver.silo.common.player.video.markerSkipTarget
 import org.siloserver.silo.common.player.video.MarkerSkipTarget
-import org.siloserver.silo.common.player.video.ManualMarkerKind
+import org.siloserver.silo.common.player.video.skipLabelRes
 import org.siloserver.silo.common.player.SessionState
 import org.siloserver.silo.common.player.rememberPlayerSpinnerVisible
 import org.siloserver.silo.common.player.SiloPlaybackService
@@ -4558,13 +4558,7 @@ private fun TvPlayerOverlays(
                     if (manualSkipTarget != null) {
                         TvMarkerSkipPill(
                             modifier = Modifier.onFocusChanged { onMarkerPillFocusChanged(it.hasFocus) },
-                            label = stringResource(
-                                when (manualSkipTarget.kind) {
-                                    ManualMarkerKind.Recap -> CommonR.string.marker_skipRecap
-                                    ManualMarkerKind.Intro -> CommonR.string.introSkip_pill_skip
-                                    ManualMarkerKind.Credits -> CommonR.string.marker_skipCredits
-                                },
-                            ),
+                            label = stringResource(manualSkipTarget.kind.skipLabelRes()),
                             onSelect = onManualMarkerSelect,
                             onSeek = onSkipPillSeek,
                         )

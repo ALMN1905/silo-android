@@ -54,7 +54,7 @@ import androidx.compose.ui.zIndex
 import org.siloserver.silo.common.ui.LanguageNames
 import org.siloserver.silo.common.player.allowsAudioDelay
 import org.siloserver.silo.common.player.video.markerSkipTarget
-import org.siloserver.silo.common.player.video.ManualMarkerKind
+import org.siloserver.silo.common.player.video.skipLabelRes
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import org.siloserver.silo.common.player.NoticeTone
@@ -588,13 +588,7 @@ fun PlayerOverlay(
             if (target != null) {
                 Box(modifier = bottomEndSlotModifier, contentAlignment = Alignment.BottomEnd) {
                     MarkerSkipPill(
-                        label = stringResource(
-                            when (target.kind) {
-                                ManualMarkerKind.Recap -> CommonR.string.marker_skipRecap
-                                ManualMarkerKind.Intro -> CommonR.string.introSkip_pill_skip
-                                ManualMarkerKind.Credits -> CommonR.string.marker_skipCredits
-                            },
-                        ),
+                        label = stringResource(target.kind.skipLabelRes()),
                         onClick = { gatedSeek(target.endSeconds) },
                     )
                 }
