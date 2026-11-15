@@ -1132,6 +1132,7 @@ private fun TvGeneralSettingsPane(
                     checked = state.showAudiobooksTab,
                     onCheckedChange = onShowAudiobooksTabChanged,
                 )
+                TvLibraryTabsPerLibraryRow()
                 SettingsFooterText(
                     text = stringResource(CommonR.string.settings_topMenu_footer),
                 )
@@ -3208,4 +3209,23 @@ private fun TvAppLanguageSettingsGroup(store: AppLanguageStore) {
             onDismiss = { showPicker = false },
         )
     }
+}
+
+/** Top menu: one tab per library instead of one per type. Device-local, off by default. */
+@Composable
+private fun TvLibraryTabsPerLibraryRow() {
+    val scopeStore: org.siloserver.silo.tv.data.preferences.TvLibraryScopeStore = koinInject()
+    var perLibrary by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(scopeStore) {
+        perLibrary = runCatching { scopeStore.getLibraryTabsPerLibrary() }.getOrDefault(false)
+    }
+    SettingsToggleRow(
+        label = stringResource(CommonR.string.settings_topMenu_tabPerLibrary),
+        checked = perLibrary,
+        onCheckedChange = { value ->
+            perLibrary = value
+            scope.launch { runCatching { scopeStore.setLibraryTabsPerLibrary(value) } }
+        },
+    )
 }

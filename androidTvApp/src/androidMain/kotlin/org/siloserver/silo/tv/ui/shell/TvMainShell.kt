@@ -327,6 +327,8 @@ fun TvMainShell(
     // restored/deep-linked main/audiobooks route isn't ejected before this
     // async DataStore read has landed.
     var showAudiobooksTabResolved by remember { mutableStateOf(false) }
+    // One tab per library instead of one per type (Settings > Top menu).
+    var perLibraryTabs by remember { mutableStateOf(false) }
     // The store exposes no Flow and Settings is an in-shell NavHost route (so no
     // ON_RESUME fires when the user backs out of it), which is why a one-shot
     // read left the tab bar stale after toggling the setting. Re-read on every
@@ -334,10 +336,11 @@ fun TvMainShell(
     // "Show Audiobooks tab" takes effect on return, without recreating the shell.
     LaunchedEffect(libraries, currentEntry?.destination?.route) {
         showAudiobooksTab = runCatching { tvLibraryScopeStore.getShowAudiobooksTab() }.getOrDefault(false)
+        perLibraryTabs = runCatching { tvLibraryScopeStore.getLibraryTabsPerLibrary() }.getOrDefault(false)
         showAudiobooksTabResolved = true
     }
-    val visibleRoots = remember(libraries, showAudiobooksTab) {
-        visibleTvRoots(libraries, showAudiobooks = showAudiobooksTab)
+    val visibleRoots = remember(libraries, showAudiobooksTab, perLibraryTabs) {
+        visibleTvRoots(libraries, showAudiobooks = showAudiobooksTab, perLibrary = perLibraryTabs)
     }
 
     // In-session scope/pill selections per library type. Scope selections are
@@ -713,8 +716,21 @@ fun TvMainShell(
         )
     }
 
-    val selectedRoot by remember(currentRoute) {
-        derivedStateOf { mapRouteToRoot(currentRoute) }
+    // With one tab per library the type route highlights the tab of the library
+    // it is scoped to (the active library of that type).
+    val rootForRoute: (String) -> TvRootDestination? = { route ->
+        val root = mapRouteToRoot(route)
+        if (perLibraryTabs && root is TvRootDestination.LibraryType) {
+            val activeId = resolvedLibraries[root.type]?.id
+            val libraryTabs = visibleRoots.filterIsInstance<TvRootDestination.Library>()
+                .filter { it.type == root.type }
+            libraryTabs.firstOrNull { it.libraryId == activeId } ?: libraryTabs.firstOrNull() ?: root
+        } else {
+            root
+        }
+    }
+    val selectedRoot by remember(currentRoute, perLibraryTabs, visibleRoots) {
+        derivedStateOf { rootForRoute(currentRoute) }
     }
     // Where an Up out of content lands on the bar. The selected root when there
     // is one; For You's dropdown children (Watchlist / Favorites) map to the
@@ -949,6 +965,9 @@ fun TvMainShell(
         if (dest is TvRootDestination.LibraryType) {
             sectionRequestNonces[dest.type] = (sectionRequestNonces[dest.type] ?: 0) + 1
         }
+        if (dest is TvRootDestination.Library) {
+            sectionRequestNonces[dest.type] = (sectionRequestNonces[dest.type] ?: 0) + 1
+        }
         if (dest == TvRootDestination.Calendar) {
             // Calendar owns an explicit shell-token -> active-filter focus
             // handoff. Requesting the parent content group here races that
@@ -1082,7 +1101,7 @@ fun TvMainShell(
         // to null and must be left alone — otherwise navigating to Settings
         // would silently eject the user back to Home. If the selected root is a
         // LibraryType whose type has no libraries, snap to Home.
-        val selected = mapRouteToRoot(currentRoute) ?: return@LaunchedEffect
+        val selected = rootForRoute(currentRoute) ?: return@LaunchedEffect
         if (!selected.isVisibleIn(visibleRoots)) {
             navigateToRoute(firstTvRoute())
         }
@@ -1663,6 +1682,12 @@ fun TvMainShell(
                     onSelectRoot(TvRootDestination.LibraryType(type))
                 }
             },
+            onSelectLibraryTab = { tab ->
+                // A library tab commits that library straight to Recommended,
+                // like Select on a type tab does for its active library.
+                libraries.firstOrNull { it.id == tab.libraryId }
+                    ?.let { library -> commitScope(tab.type, library, TvLibraryPill.Recommended) }
+            },
             onSearchClick = onSearchPressed,
             onProfileClick = focusState::enterProfileMenu,
             onProfileDwell = focusState::previewProfileMenu,
@@ -1769,7 +1794,18 @@ fun TvMainShell(
                     )
                 }
             }
-            if (dest is TvRootDestination.LibraryType) {
+            // A type tab's panel lists that type's libraries; a library tab's panel
+            // is the same cascade for its one library, so it shows the sections.
+            val cascadeType = when (dest) {
+                is TvRootDestination.LibraryType -> dest.type
+                is TvRootDestination.Library -> dest.type
+                else -> null
+            }
+            if (cascadeType != null) {
+                val cascadeLibraries = when (dest) {
+                    is TvRootDestination.Library -> libraries.filter { it.id == dest.libraryId }
+                    else -> libraries.filter { cascadeType.matches(it) }
+                }
                 val panel = TvTopMenuPanel.Root(dest)
                 val active = focusState.openPanel == panel
                 val anchor = tabAnchors[panel]
@@ -1795,17 +1831,17 @@ fun TvMainShell(
                         .zIndex(2f),
                 ) {
                     TvCascadeSelector(
-                        type = dest.type,
-                        libraries = libraries.filter { dest.type.matches(it) },
-                        currentScopeId = activeLibrary(dest.type)?.id,
+                        type = cascadeType,
+                        libraries = cascadeLibraries,
+                        currentScopeId = activeLibrary(cascadeType)?.id,
                         libraryHasCollections = { id ->
                             librariesWithCollections?.contains(id) ?: true
                         },
-                        selectedPill = pillSelections[dest.type] ?: TvLibraryPill.Recommended,
+                        selectedPill = pillSelections[cascadeType] ?: TvLibraryPill.Recommended,
                         entersPanel = active && focusState.panelEntersFocus,
                         focusEntryToken = focusState.panelFocusEntryToken,
-                        onCommitLibrary = { lib -> commitScope(dest.type, lib, TvLibraryPill.Recommended) },
-                        onCommitSection = { lib, pill -> commitScope(dest.type, lib, pill) },
+                        onCommitLibrary = { lib -> commitScope(cascadeType, lib, TvLibraryPill.Recommended) },
+                        onCommitSection = { lib, pill -> commitScope(cascadeType, lib, pill) },
                         // Where focus actually is, which is what Back routing
                         // needs — the entry flag only records intent.
                         onPanelFocusChanged = { focusState.onPanelFocusChanged(it) },
@@ -2017,12 +2053,15 @@ private fun TvRootDestination.toRoute(): String = when (this) {
     TvRootDestination.Home -> TvMainRoute.Home.route
     TvRootDestination.ForYou -> TvMainRoute.ForYou.route
     TvRootDestination.Calendar -> TvMainRoute.Calendar.route
-    is TvRootDestination.LibraryType -> when (type) {
-        TvLibraryTabType.Movies -> TvMainRoute.Movies.route
-        TvLibraryTabType.Series -> TvMainRoute.Series.route
-        TvLibraryTabType.Music -> TvMainRoute.Music.route
-        TvLibraryTabType.Audiobooks -> TvMainRoute.Audiobooks.route
-    }
+    is TvRootDestination.LibraryType -> type.toRoute()
+    is TvRootDestination.Library -> type.toRoute()
+}
+
+private fun TvLibraryTabType.toRoute(): String = when (this) {
+    TvLibraryTabType.Movies -> TvMainRoute.Movies.route
+    TvLibraryTabType.Series -> TvMainRoute.Series.route
+    TvLibraryTabType.Music -> TvMainRoute.Music.route
+    TvLibraryTabType.Audiobooks -> TvMainRoute.Audiobooks.route
 }
 
 /**

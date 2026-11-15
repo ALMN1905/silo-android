@@ -83,6 +83,24 @@ class TvLibraryScopeStore(
         }
     }
 
+    /**
+     * Whether the top menu shows one tab per library instead of one per type.
+     * Off by default (the type tabs); device+profile local, never server-synced.
+     */
+    suspend fun getLibraryTabsPerLibrary(): Boolean {
+        val profileId = tokenManager.getProfileId() ?: return false
+        val serverId = tokenManager.getCurrentServerId() ?: DEFAULT_SERVER_ID
+        return storeFor(profileId).data.first()[libraryTabsPerLibraryKey(serverId)] ?: false
+    }
+
+    suspend fun setLibraryTabsPerLibrary(perLibrary: Boolean) {
+        val profileId = tokenManager.getProfileId() ?: return
+        val serverId = tokenManager.getCurrentServerId() ?: DEFAULT_SERVER_ID
+        storeFor(profileId).edit { prefs ->
+            prefs[libraryTabsPerLibraryKey(serverId)] = perLibrary
+        }
+    }
+
     /** Persist [id] as the scope for [type] under the active profile/server. */
     suspend fun setSelectedLibraryId(id: Int?, type: TvLibraryTabType) {
         val profileId = tokenManager.getProfileId() ?: return
@@ -139,6 +157,9 @@ class TvLibraryScopeStore(
 
         private fun scopeKey(serverId: String, type: TvLibraryTabType) =
             intPreferencesKey("scope_${serverId}_${type.name.lowercase()}")
+
+        private fun libraryTabsPerLibraryKey(serverId: String) =
+            androidx.datastore.preferences.core.booleanPreferencesKey("library_tabs_per_library_$serverId")
 
         private fun showAudiobooksKey(serverId: String) =
             androidx.datastore.preferences.core.booleanPreferencesKey("show_audiobooks_$serverId")

@@ -16,12 +16,23 @@ fun visibleTvRoots(
     /** tvOS navPrefs.showAudiobooks parity: the Audiobooks tab is opt-in
      *  (hidden by default) even when an audiobook library exists. */
     showAudiobooks: Boolean = false,
+    /** One tab per library instead of one per type; a mixed library gets one tab, under Movies. */
+    perLibrary: Boolean = false,
 ): List<TvRootDestination> = buildList {
     add(TvRootDestination.Home)
-    TvLibraryTabType.entries
+    val types = TvLibraryTabType.entries
         .filter { type -> libraries.any { type.matches(it) } }
         .filter { type -> type != TvLibraryTabType.Audiobooks || showAudiobooks }
-        .forEach { type -> add(TvRootDestination.LibraryType(type)) }
+    if (perLibrary) {
+        val placed = mutableSetOf<Int>()
+        types.forEach { type ->
+            libraries.filter { type.matches(it) }.forEach { library ->
+                if (placed.add(library.id)) add(TvRootDestination.Library(type, library.id, library.name))
+            }
+        }
+    } else {
+        types.forEach { type -> add(TvRootDestination.LibraryType(type)) }
+    }
     // tvOS root order: libraries, then For You, then Calendar.
     add(TvRootDestination.ForYou)
     add(TvRootDestination.Calendar)

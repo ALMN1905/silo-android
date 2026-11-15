@@ -128,6 +128,7 @@ object TvTopMenuLayout {
 private sealed class TvTopMenuFocus {
     data object Home : TvTopMenuFocus()
     data class Tab(val type: TvLibraryTabType) : TvTopMenuFocus()
+    data class LibraryTab(val libraryId: Int) : TvTopMenuFocus()
     data object ForYou : TvTopMenuFocus()
     data object Calendar : TvTopMenuFocus()
     data object Search : TvTopMenuFocus()
@@ -170,6 +171,7 @@ fun TvTopMenuBar(
     accountState: TvAccountState,
     onSelectRoot: (TvRootDestination) -> Unit,
     onSelectTab: (TvLibraryTabType) -> Unit = {},
+    onSelectLibraryTab: (TvRootDestination.Library) -> Unit = {},
     onSearchClick: () -> Unit,
     onProfileClick: () -> Unit,
     onProfileDwell: () -> Unit,
@@ -212,6 +214,13 @@ fun TvTopMenuBar(
     val tabFocusRequesters = remember {
         TvLibraryTabType.entries.associateWith { FocusRequester() }
     }
+    // The same for the per-library tabs, which come and go with the libraries.
+    val libraryTabFocusRequesters = remember { mutableMapOf<Int, FocusRequester>() }
+    fun libraryTabRequester(libraryId: Int) =
+        libraryTabFocusRequesters.getOrPut(libraryId) { FocusRequester() }
+    fun libraryTabFor(libraryId: Int): TvRootDestination.Library? =
+        destinations.firstOrNull { it is TvRootDestination.Library && it.libraryId == libraryId }
+            as TvRootDestination.Library?
 
     // Track which button currently holds focus so we can shape the capsule
     // chrome directly, independent of the surface's focused-state propagation
@@ -248,6 +257,7 @@ fun TvTopMenuBar(
         TvRootDestination.ForYou -> TvTopMenuFocus.ForYou
         TvRootDestination.Calendar -> TvTopMenuFocus.Calendar
         is TvRootDestination.LibraryType -> TvTopMenuFocus.Tab(root.type)
+        is TvRootDestination.Library -> TvTopMenuFocus.LibraryTab(root.libraryId)
     }
 
     fun focusForPanel(panel: TvTopMenuPanel): TvTopMenuFocus? = when (panel) {
@@ -258,6 +268,7 @@ fun TvTopMenuBar(
     fun requesterForFocus(focus: TvTopMenuFocus): FocusRequester = when (focus) {
         TvTopMenuFocus.Home -> homeFocusRequester
         is TvTopMenuFocus.Tab -> tabFocusRequesters[focus.type] ?: homeFocusRequester
+        is TvTopMenuFocus.LibraryTab -> libraryTabRequester(focus.libraryId)
         TvTopMenuFocus.ForYou -> forYouFocusRequester
         TvTopMenuFocus.Calendar -> calendarFocusRequester
         TvTopMenuFocus.Search -> searchFocusRequester
@@ -267,6 +278,7 @@ fun TvTopMenuBar(
     fun panelForFocus(focus: TvTopMenuFocus?): TvTopMenuPanel? = when (focus) {
         is TvTopMenuFocus.Tab ->
             TvTopMenuPanel.Root(TvRootDestination.LibraryType(focus.type))
+        is TvTopMenuFocus.LibraryTab -> libraryTabFor(focus.libraryId)?.let { TvTopMenuPanel.Root(it) }
         TvTopMenuFocus.ForYou -> TvTopMenuPanel.Root(TvRootDestination.ForYou)
         else -> null
     }
@@ -275,6 +287,7 @@ fun TvTopMenuBar(
         TvRootDestination.Home -> homeFocusRequester
         TvRootDestination.Calendar -> calendarFocusRequester
         is TvRootDestination.LibraryType -> tabFocusRequesters[root.type] ?: homeFocusRequester
+        is TvRootDestination.Library -> libraryTabRequester(root.libraryId)
         TvRootDestination.ForYou -> forYouFocusRequester
         null -> if (isSearchActive) searchFocusRequester else homeFocusRequester
     }
@@ -385,6 +398,9 @@ fun TvTopMenuBar(
         if (focus is TvTopMenuFocus.Tab) {
             delay(if (openPanel == null) TopMenuInitialPreviewDelayMillis else TopMenuPanelSwitchDelayMillis)
             onDwell(TvTopMenuPanel.Root(TvRootDestination.LibraryType(focus.type)))
+        } else if (focus is TvTopMenuFocus.LibraryTab) {
+            delay(if (openPanel == null) TopMenuInitialPreviewDelayMillis else TopMenuPanelSwitchDelayMillis)
+            libraryTabFor(focus.libraryId)?.let { onDwell(TvTopMenuPanel.Root(it)) }
         } else if (focus is TvTopMenuFocus.ForYou) {
             delay(if (openPanel == null) TopMenuInitialPreviewDelayMillis else TopMenuPanelSwitchDelayMillis)
             onDwell(TvTopMenuPanel.Root(TvRootDestination.ForYou))
@@ -510,6 +526,11 @@ fun TvTopMenuBar(
                         if (event.type == KeyEventType.KeyUp) onSelectTab(focus.type)
                         true
                     }
+                    (event.key == Key.DirectionCenter || event.key == Key.Enter) &&
+                        focus is TvTopMenuFocus.LibraryTab -> {
+                        if (event.type == KeyEventType.KeyUp) libraryTabFor(focus.libraryId)?.let(onSelectLibraryTab)
+                        true
+                    }
                     else -> false
                 }
             },
@@ -592,6 +613,28 @@ fun TvTopMenuBar(
                             // d-pad-down → enter-panel intercept lives on the
                             // bar's own preview key handler (ancestor of the tab),
                             // which fires before any tab-level handler would.
+                            modifier = Modifier
+                                .onGloballyPositioned { onTabAnchor(panel, it) },
+                        )
+                    }
+
+                    is TvRootDestination.Library -> {
+                        val panel = TvTopMenuPanel.Root(destination)
+                        val libraryFocus = TvTopMenuFocus.LibraryTab(destination.libraryId)
+                        TvTopMenuTab(
+                            label = destination.name,
+                            isSelected = selectedRoot == destination,
+                            isFocused = focusedButton == libraryFocus,
+                            canFocus = canFocusButton(libraryFocus),
+                            focusRequester = libraryTabRequester(destination.libraryId),
+                            onFocusChanged = { hasFocus ->
+                                focusedButton = if (hasFocus) {
+                                    libraryFocus
+                                } else {
+                                    focusedButton.takeUnless { it == libraryFocus }
+                                }
+                            },
+                            onClick = { onSelectLibraryTab(destination) },
                             modifier = Modifier
                                 .onGloballyPositioned { onTabAnchor(panel, it) },
                         )

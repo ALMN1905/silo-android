@@ -5644,6 +5644,8 @@
     <string name="settings_titleArt_thisTvOnly">Off: only affects this TV. Your other devices keep their own setting.</string>
     <!-- Heading of the title art options on Settings → Interface (they affect title detail pages) on Android phone and Apple (iPhone, iPad, Mac). On Android TV, Settings > General: heading of the group with the title art switches for detail pages. -->
     <string name="settings_titleArt_title">Title Pages</string>
+    <!-- Android TV settings, Top menu: toggle. On shows one top-menu tab per library (Movies, Anime Movies, Series, Anime...); off shows one tab per type (Movies, Series...). -->
+    <string name="settings_topMenu_tabPerLibrary">One tab per library</string>
     <!-- Android TV Settings > General > Top Menu: help text under the Show Audiobooks switch. -->
     <string name="settings_topMenu_footer">Adds an Audiobooks tab to the top menu when your server has an audiobook library. Hidden by default.</string>
     <!-- Android TV Settings > General: heading of the group that controls which tabs the top menu shows. -->
