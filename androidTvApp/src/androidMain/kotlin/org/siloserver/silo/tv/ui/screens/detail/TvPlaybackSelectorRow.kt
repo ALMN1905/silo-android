@@ -242,20 +242,25 @@ internal fun TvPlaybackActionSelectors(
             triggerStyle = TvSelectorTriggerStyle.CircularAction,
         )
     }
-    TvAnchoredSelectorMenu(
-        icon = Icons.Filled.VideoLibrary,
-        label = stringResource(CommonR.string.detail_version),
-        value = versionValue,
-        options = versionOptions,
-        triggerFocusRequester = versionFocusRequester.takeUnless { showEditions },
-        interactive = currentVersion != null && selectorIsInteractive(scopedVersions.size),
-        triggerStyle = TvSelectorTriggerStyle.CircularAction,
-    )
+    // A single version leaves nothing to choose, so the button is not drawn.
+    val showVersion = selectorIsInteractive(scopedVersions.size)
+    if (showVersion) {
+        TvAnchoredSelectorMenu(
+            icon = Icons.Filled.VideoLibrary,
+            label = stringResource(CommonR.string.detail_version),
+            value = versionValue,
+            options = versionOptions,
+            triggerFocusRequester = versionFocusRequester.takeUnless { showEditions },
+            interactive = currentVersion != null,
+            triggerStyle = TvSelectorTriggerStyle.CircularAction,
+        )
+    }
     TvAnchoredSelectorMenu(
         icon = Icons.AutoMirrored.Filled.VolumeUp,
         label = stringResource(CommonR.string.detail_audio),
         value = audioValue,
         options = audioOptions,
+        triggerFocusRequester = versionFocusRequester.takeUnless { showEditions || showVersion },
         interactive = currentVersion != null && formattedAudioOptions.isNotEmpty(),
         triggerStyle = TvSelectorTriggerStyle.CircularAction,
     )
