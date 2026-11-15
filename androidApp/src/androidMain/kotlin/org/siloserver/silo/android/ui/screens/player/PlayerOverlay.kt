@@ -584,11 +584,17 @@ fun PlayerOverlay(
         }
 
         if (!state.showUpNext && !introSkipState.isVisible && seekEnabled && !state.isLoading) {
-            val target = markerSkipTarget(state.position, state.markerTimeline)
+            val target = markerSkipTarget(state.position, state.markerTimeline, includeIntro = true)
             if (target != null) {
                 Box(modifier = bottomEndSlotModifier, contentAlignment = Alignment.BottomEnd) {
                     MarkerSkipPill(
-                        label = stringResource(if (target.kind == ManualMarkerKind.Recap) CommonR.string.marker_skipRecap else CommonR.string.marker_skipCredits),
+                        label = stringResource(
+                            when (target.kind) {
+                                ManualMarkerKind.Recap -> CommonR.string.marker_skipRecap
+                                ManualMarkerKind.Intro -> CommonR.string.introSkip_pill_skip
+                                ManualMarkerKind.Credits -> CommonR.string.marker_skipCredits
+                            },
+                        ),
                         onClick = { gatedSeek(target.endSeconds) },
                     )
                 }

@@ -955,7 +955,7 @@ class PlayerViewModel(
                 introAutoSkipController.state.map { it.isVisible },
                 _uiState.map { state ->
                     state.showUpNext ||
-                        (!state.isLoading && markerSkipTarget(state.position, state.markerTimeline) != null)
+                        (!state.isLoading && markerSkipTarget(state.position, state.markerTimeline, includeIntro = true) != null)
                 },
             ) { introVisible, otherVisible -> introVisible || otherVisible }
                 .distinctUntilChanged()
