@@ -448,6 +448,7 @@ fun TvPlayerScreen(
     var exitRequested by remember { mutableStateOf(false) }
     var requestedHudTab by remember { mutableStateOf(HudTab.Info) }
     var showQuickSubtitlePicker by remember { mutableStateOf(false) }
+    var showQuickAudioPicker by remember { mutableStateOf(false) }
     var subtitleFocusedStableId by remember { mutableStateOf<String?>(null) }
     // Captured PlayerView reference so subtitleManager.applyAppearance can hit
     // the inflated subtitleView after the AndroidView factory runs. Mirrors
@@ -687,6 +688,18 @@ fun TvPlayerScreen(
     val latestRoomSnapshot by rememberUpdatedState(roomSnapshot)
     val latestShowPartyPanel by rememberUpdatedState(showPartyPanel)
     val latestShowQuickSubtitlePicker by rememberUpdatedState(showQuickSubtitlePicker)
+    val latestShowQuickAudioPicker by rememberUpdatedState(showQuickAudioPicker)
+    // Audio quick picker data: the same catalog rows and effective ordinal the
+    // Options audio row uses, so both pickers list and check the same track.
+    val audioFormatting = org.siloserver.silo.tv.ui.screens.detail.TvPlaybackFormatting
+    val audioPlaybackText = org.siloserver.silo.tv.ui.screens.detail.rememberTvPlaybackText()
+    val quickAudioVersion = state.fileVersions.firstOrNull { it.fileId == (state.selectedFileId ?: state.mediaFileId) }
+    val quickAudioTracks = quickAudioVersion?.audioTracks.orEmpty()
+    val quickAudioOrdinal = audioFormatting.effectiveAudioOrdinal(
+        tracks = quickAudioTracks,
+        planOrdinal = state.desiredAudioOrdinal,
+        version = quickAudioVersion,
+    )
     val selectTvSubtitle: (SubtitleIdentity) -> Unit = { identity ->
         subtitleFocusedStableId = tvSubtitleOptionStableId(identity)
         viewModel.selectSubtitleOption(identity)
@@ -1123,6 +1136,7 @@ fun TvPlayerScreen(
                 viewModel.onBufferingBack() -> Unit
             lowerQuality != null && !state.showControls -> qualityOffer.dismissed = true
             showQuickSubtitlePicker -> showQuickSubtitlePicker = false
+            showQuickAudioPicker -> showQuickAudioPicker = false
             // On the Up-Next overlay, Back exits the player (matches tvOS, where
             // the Up-Next "Back" button dismisses the whole player).
             state.showNextUp -> stopPlaybackAndExit()
@@ -1294,7 +1308,7 @@ fun TvPlayerScreen(
             if (event.action == KeyEvent.ACTION_DOWN && playerState.showControls) {
                 viewModel.setControlsVisible(true)
             }
-            if (latestShowQuickSubtitlePicker ||
+            if (latestShowQuickSubtitlePicker || latestShowQuickAudioPicker ||
                 playerState.hudOpen || latestShowPartyPanel ||
                 // The Up-Next overlay is a focus-trapping Compose surface that
                 // owns its own remote input (Play Now / Keep Watching / Back) —
@@ -1451,6 +1465,7 @@ fun TvPlayerScreen(
                 !playerState.hudOpen &&
                 !playerState.showNextUp &&
                 !latestShowQuickSubtitlePicker &&
+                !latestShowQuickAudioPicker &&
                 !latestShowPartyPanel
             ) {
                 if (event.action == KeyEvent.ACTION_UP) {
@@ -2510,6 +2525,18 @@ fun TvPlayerScreen(
                             showQuickSubtitlePicker = true
                             viewModel.setControlsVisible(true)
                         },
+                        // Only offered when there is a choice, like the Options row.
+                        audioValue = quickAudioOrdinal?.let { ordinal ->
+                            audioFormatting.audioSummaryForOrdinal(quickAudioVersion, ordinal, text = audioPlaybackText)
+                        },
+                        onOpenQuickAudio = if (quickAudioTracks.size > 1) {
+                            {
+                                showQuickAudioPicker = true
+                                viewModel.setControlsVisible(true)
+                            }
+                        } else {
+                            null
+                        },
                         // Only offered when there is something to advance to;
                         // the view model owns that predicate so the manual
                         // control and the automatic trigger cannot disagree.
@@ -2703,6 +2730,31 @@ fun TvPlayerScreen(
                         },
                         onDismiss = {
                             applyQuickSubtitlePickerExit(TvQuickSubtitlePickerExit.Back)
+                        },
+                    )
+                }
+
+                if (!isInPictureInPictureMode && showQuickAudioPicker) {
+                    TvQuickAudioPicker(
+                        options = quickAudioTracks.indices.map { ordinal ->
+                            HudPickerOption(
+                                id = ordinal.toString(),
+                                label = audioFormatting.audioChoiceLabelForOrdinal(
+                                    quickAudioTracks,
+                                    ordinal,
+                                    audioPlaybackText,
+                                ) ?: audioPlaybackText.track(LocaleFormat.integer(ordinal + 1)),
+                            )
+                        },
+                        selectedId = quickAudioOrdinal?.toString().orEmpty(),
+                        onSelect = { id ->
+                            id.toIntOrNull()?.let(viewModel::selectAudioOption)
+                            showQuickAudioPicker = false
+                            viewModel.setControlsVisible(false)
+                        },
+                        onDismiss = {
+                            showQuickAudioPicker = false
+                            viewModel.setControlsVisible(true)
                         },
                     )
                 }
@@ -3120,6 +3172,8 @@ private fun TvPlayerIdleOverlay(
     focusRequest: TvIdleOverlayFocusRequest,
     onOpenHUD: () -> Unit,
     onOpenQuickSubtitles: () -> Unit,
+    onOpenQuickAudio: (() -> Unit)? = null,
+    audioValue: String? = null,
     /** Non-null only while a next episode is resolved and not already shown. */
     onUpNext: (() -> Unit)? = null,
     onClose: () -> Unit,
@@ -3321,6 +3375,8 @@ private fun TvPlayerIdleOverlay(
                 onPlayPause = onPlayPause,
                 onSkipForward = onSkipForward,
                 onOpenQuickSubtitles = onOpenQuickSubtitles,
+                onOpenQuickAudio = onOpenQuickAudio,
+                audioValue = audioValue,
                 onUpNext = onUpNext,
                 onOpenHUD = onOpenHUD,
                 onClose = onClose,
@@ -3365,6 +3421,34 @@ private fun formatSleepCountdown(seconds: Int): String {
         stringResource(CommonR.string.catalog_runtimeMinutesSeconds, LocaleFormat.integer(m), sec)
     } else {
         stringResource(CommonR.string.catalog_runtimeSeconds, sec)
+    }
+}
+
+/** Audio counterpart of [TvQuickSubtitlePicker]; same in-window overlay, same reasons. */
+@Composable
+private fun TvQuickAudioPicker(
+    options: List<HudPickerOption>,
+    selectedId: String,
+    onSelect: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    BackHandler(enabled = true, onBack = onDismiss)
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.42f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        HudPickerDialog(
+            presentation = HudPickerPresentation(
+                title = stringResource(CommonR.string.player_hud_audioTrack),
+                options = options,
+                selectedId = selectedId.ifEmpty { options.firstOrNull()?.id.orEmpty() },
+                closeOnSelect = false,
+                onSelect = onSelect,
+            ),
+            onClose = onDismiss,
+        )
     }
 }
 

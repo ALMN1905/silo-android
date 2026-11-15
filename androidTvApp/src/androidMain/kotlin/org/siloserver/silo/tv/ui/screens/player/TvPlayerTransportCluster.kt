@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -72,6 +73,8 @@ fun TvPlayerTransportCluster(
     onPlayPause: () -> Unit,
     onSkipForward: () -> Unit,
     onOpenQuickSubtitles: () -> Unit,
+    /** Non-null only when the item has more than one audio track to choose from. */
+    onOpenQuickAudio: (() -> Unit)? = null,
     /**
      * Non-null only when there is a next episode to show. Mirrors
      * silo-apple#86: the automatic trigger fires at the credits, and this lets
@@ -88,6 +91,8 @@ fun TvPlayerTransportCluster(
     skipForwardSeconds: Int = 30,
     // What the Subtitles button reveals when focused ("English", "Off").
     subtitlesValue: String? = null,
+    // What the Audio button reveals when focused ("English · EAC3 · 5.1").
+    audioValue: String? = null,
 ) {
     // The groups sit at opposite ends of the row. Left/Right cross the gap
     // between them explicitly; a plain search from skip-forward can land on
@@ -145,14 +150,27 @@ fun TvPlayerTransportCluster(
                 )
                 DockGap()
             }
+            onOpenQuickAudio?.let { showAudio ->
+                TransportIconButton(
+                    icon = Icons.AutoMirrored.Rounded.VolumeUp,
+                    description = stringResource(CommonR.string.player_hud_audio),
+                    label = stringResource(CommonR.string.player_hud_audio),
+                    value = audioValue,
+                    onClick = showAudio,
+                    focusRequester = firstSecondaryFocus.takeIf { onUpNext == null },
+                    leftNeighbor = skipForwardFocus.takeIf { onUpNext == null },
+                    onMoveUp = onMoveUpToScrubber,
+                )
+                DockGap()
+            }
             TransportIconButton(
                 icon = Icons.Rounded.Subtitles,
                 description = stringResource(CommonR.string.player_hud_subtitles),
                 label = stringResource(CommonR.string.player_hud_subtitles),
                 value = subtitlesValue,
                 onClick = onOpenQuickSubtitles,
-                focusRequester = firstSecondaryFocus.takeIf { onUpNext == null },
-                leftNeighbor = skipForwardFocus.takeIf { onUpNext == null },
+                focusRequester = firstSecondaryFocus.takeIf { onUpNext == null && onOpenQuickAudio == null },
+                leftNeighbor = skipForwardFocus.takeIf { onUpNext == null && onOpenQuickAudio == null },
                 onMoveUp = onMoveUpToScrubber,
             )
             DockGap()
