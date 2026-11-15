@@ -43,7 +43,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -152,8 +151,6 @@ fun PlaybackSelectorCard(
     rows: Int = 3,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    // Remembered for the next loading skeleton, so it has the same height as the card it stands for.
-    SideEffect { PlaybackSelectorRowMemory.rows = rows }
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -165,10 +162,11 @@ fun PlaybackSelectorCard(
     )
 }
 
-/** The row count of the last selector card shown, which a loading skeleton copies. */
-internal object PlaybackSelectorRowMemory {
-    var rows: Int = 3
-}
+/**
+ * The loading skeleton's rows: Audio and Subtitles. Most items have one version,
+ * so the Version row is not in the placeholder; one that has several adds it when it loads.
+ */
+internal const val PlaybackSelectorSkeletonRows = 2
 
 private fun playbackSelectorHeight(rows: Int): Dp = (44 * rows + (rows - 1) * 0.5f).dp
 
@@ -196,7 +194,7 @@ fun PlaybackSelectorDivider() {
  * prevents the season controls and episode rail from moving vertically.
  */
 @Composable
-fun PlaybackSelectorSkeleton(modifier: Modifier = Modifier, rows: Int = PlaybackSelectorRowMemory.rows) {
+fun PlaybackSelectorSkeleton(modifier: Modifier = Modifier, rows: Int = PlaybackSelectorSkeletonRows) {
     // With a Version row hidden the card is Audio + Subtitles, the last widths.
     val labelWidths = listOf(52.dp, 42.dp, 64.dp).takeLast(rows.coerceIn(1, 3))
     val valueWidths = listOf(128.dp, 154.dp, 48.dp).takeLast(rows.coerceIn(1, 3))
