@@ -43,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -147,17 +148,37 @@ fun TrackSelectorRow(
 @Composable
 fun PlaybackSelectorCard(
     modifier: Modifier = Modifier,
+    /** Rows the card shows (44dp each): the card keeps that height while its content loads. */
+    rows: Int = 3,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    // Remembered for the next loading skeleton, so it has the same height as the card it stands for.
+    SideEffect { PlaybackSelectorRowMemory.rows = rows }
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = 133.dp)
+            .heightIn(min = playbackSelectorHeight(rows))
             .clip(RoundedCornerShape(12.dp))
             .background(Color.White.copy(alpha = 0.05f))
             .border(0.5.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(12.dp)),
         content = content,
     )
+}
+
+/** The row count of the last selector card shown, which a loading skeleton copies. */
+internal object PlaybackSelectorRowMemory {
+    var rows: Int = 3
+}
+
+private fun playbackSelectorHeight(rows: Int): Dp = (44 * rows + (rows - 1) * 0.5f).dp
+
+/** Edition and Version rows shown for [detail]: a Version row only offers a choice with several versions. */
+internal fun versionSelectorRowCount(detail: ItemDetail): Int {
+    val editions = playbackEditions(detail.versions, detail.playbackVariants)
+    val showEditions = editions.hasEditionChoices()
+    val currentEdition = editions.firstOrNull()
+    val versions = if (showEditions) currentEdition?.versions.orEmpty() else detail.versions
+    return (if (showEditions) 1 else 0) + (if (versions.size > 1) 1 else 0)
 }
 
 @Composable
@@ -175,12 +196,13 @@ fun PlaybackSelectorDivider() {
  * prevents the season controls and episode rail from moving vertically.
  */
 @Composable
-fun PlaybackSelectorSkeleton(modifier: Modifier = Modifier) {
-    val labelWidths = listOf(52.dp, 42.dp, 64.dp)
-    val valueWidths = listOf(128.dp, 154.dp, 48.dp)
+fun PlaybackSelectorSkeleton(modifier: Modifier = Modifier, rows: Int = PlaybackSelectorRowMemory.rows) {
+    // With a Version row hidden the card is Audio + Subtitles, the last widths.
+    val labelWidths = listOf(52.dp, 42.dp, 64.dp).takeLast(rows.coerceIn(1, 3))
+    val valueWidths = listOf(128.dp, 154.dp, 48.dp).takeLast(rows.coerceIn(1, 3))
 
-    PlaybackSelectorCard(modifier = modifier) {
-        repeat(3) { index ->
+    PlaybackSelectorCard(modifier = modifier, rows = rows) {
+        repeat(labelWidths.size) { index ->
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -194,7 +216,7 @@ fun PlaybackSelectorSkeleton(modifier: Modifier = Modifier) {
                 Spacer(modifier = Modifier.weight(1f))
                 SelectorSkeletonShape(width = valueWidths[index], height = 12.dp)
             }
-            if (index < 2) PlaybackSelectorDivider()
+            if (index < labelWidths.lastIndex) PlaybackSelectorDivider()
         }
     }
 }
@@ -237,15 +259,17 @@ fun EditionVersionSelectorRows(
             value = currentEdition?.label.orEmpty(),
             onClick = { showEditionPicker = true },
         )
-        PlaybackSelectorDivider()
+        if (versions.size > 1) PlaybackSelectorDivider()
     }
-    TrackSelectorRow(
-        icon = Icons.Outlined.VideoLibrary,
-        label = stringResource(CommonR.string.detail_version),
-        value = formatVersionValueLabel(resources, selectedVersion, isAutoVersion),
-        onClick = { showVersionPicker = true },
-        interactive = versions.size > 1,
-    )
+    // One version leaves nothing to choose, so the row is not drawn.
+    if (versions.size > 1) {
+        TrackSelectorRow(
+            icon = Icons.Outlined.VideoLibrary,
+            label = stringResource(CommonR.string.detail_version),
+            value = formatVersionValueLabel(resources, selectedVersion, isAutoVersion),
+            onClick = { showVersionPicker = true },
+        )
+    }
     if (showEditionPicker) {
         PickerSheetScaffold(
             title = stringResource(CommonR.string.detail_picker_selectEdition),

@@ -188,7 +188,11 @@ fun MovieDetailContent(
                     // PR #212 places the grouped playback card after overview,
                     // credits, and translation—not inside the action stack.
                     if (hasTrackSelectors) {
-                        PlaybackSelectorCard {
+                        val versionRows = versionSelectorRowCount(detail)
+                        PlaybackSelectorCard(
+                            rows = versionRows + (if (audioTracks.isNotEmpty()) 1 else 0) +
+                                (if (subtitleTracks.isNotEmpty()) 1 else 0),
+                        ) {
                             EditionVersionSelectorRows(
                                 detail = detail,
                                 selectedVersionIndex = selectedVersionIndex,
@@ -198,7 +202,7 @@ fun MovieDetailContent(
                                 onEditionSelected = onEditionSelected,
                             )
                             if (audioTracks.isNotEmpty()) {
-                                PlaybackSelectorDivider()
+                                if (versionRows > 0) PlaybackSelectorDivider()
                                 TrackSelectorRow(
                                     icon = Icons.Outlined.AudioFile,
                                     label = stringResource(CommonR.string.detail_audio),
@@ -213,7 +217,7 @@ fun MovieDetailContent(
                                 )
                             }
                             if (subtitleTracks.isNotEmpty()) {
-                                PlaybackSelectorDivider()
+                                if (versionRows > 0 || audioTracks.isNotEmpty()) PlaybackSelectorDivider()
                                 TrackSelectorRow(
                                     icon = Icons.Outlined.ClosedCaption,
                                     label = stringResource(CommonR.string.detail_subtitles),

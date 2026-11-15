@@ -199,7 +199,8 @@ fun SeriesDetailContent(
                     val selectedVersion = loadedSelectedEpisodeDetail.versions.getOrNull(selectedVersionIndex)
                     val audioTracks = selectedVersion?.audioTracks.orEmpty()
                     val subtitleTracks = selectedVersion?.subtitleTracks.orEmpty()
-                    PlaybackSelectorCard {
+                    val versionRows = versionSelectorRowCount(loadedSelectedEpisodeDetail)
+                    PlaybackSelectorCard(rows = versionRows + 2) {
                         EditionVersionSelectorRows(
                             detail = loadedSelectedEpisodeDetail,
                             selectedVersionIndex = selectedVersionIndex,
@@ -208,7 +209,7 @@ fun SeriesDetailContent(
                             onVersionSelected = onVersionSelected,
                             onEditionSelected = onEditionSelected,
                         )
-                        PlaybackSelectorDivider()
+                        if (versionRows > 0) PlaybackSelectorDivider()
                         TrackSelectorRow(
                             icon = Icons.Outlined.AudioFile,
                             label = stringResource(CommonR.string.detail_audio),
