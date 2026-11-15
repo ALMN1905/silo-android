@@ -1525,7 +1525,7 @@ class TvPlayerViewModel(
         )
     // Marker controls use source time; presentationState deliberately omits the clock.
     val manualMarkerSkipTarget: StateFlow<MarkerSkipTarget?> = uiState
-        .map { markerSkipTarget(it.position, it.markerTimeline) }
+        .map { markerSkipTarget(it.position, it.markerTimeline, includeIntro = true) }
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 

@@ -814,7 +814,7 @@ fun TvPlayerScreen(
 
     fun handleManualMarkerSelect() {
         val current = viewModel.uiState.value
-        val target = markerSkipTarget(current.position, current.markerTimeline) ?: return
+        val target = markerSkipTarget(current.position, current.markerTimeline, includeIntro = true) ?: return
         if (watchParty != null) {
             if (!watchParty.canSeek()) return
             watchParty.seek(target.endSeconds)
@@ -4558,7 +4558,13 @@ private fun TvPlayerOverlays(
                     if (manualSkipTarget != null) {
                         TvMarkerSkipPill(
                             modifier = Modifier.onFocusChanged { onMarkerPillFocusChanged(it.hasFocus) },
-                            label = stringResource(if (manualSkipTarget.kind == ManualMarkerKind.Recap) CommonR.string.marker_skipRecap else CommonR.string.marker_skipCredits),
+                            label = stringResource(
+                                when (manualSkipTarget.kind) {
+                                    ManualMarkerKind.Recap -> CommonR.string.marker_skipRecap
+                                    ManualMarkerKind.Intro -> CommonR.string.introSkip_pill_skip
+                                    ManualMarkerKind.Credits -> CommonR.string.marker_skipCredits
+                                },
+                            ),
                             onSelect = onManualMarkerSelect,
                             onSeek = onSkipPillSeek,
                         )
