@@ -2443,6 +2443,12 @@ fun TvPlayerScreen(
                             .firstOrNull { row -> row.checked }
                             ?.let { row -> tvSubtitleRowParts(row.label).title }
                             ?: stringResource(CommonR.string.player_tracks_subtitlesOff),
+                        skipLabel = manualSkipTarget?.let { stringResource(manualMarkerSkipLabel(it.kind)) },
+                        onSkip = if (manualSkipTarget != null) {
+                            { handleManualMarkerSelect() }
+                        } else {
+                            null
+                        },
                         positionSec = clock.position,
                         durationSec = clock.duration,
                         isPaused = state.isPaused,
@@ -3120,6 +3126,8 @@ private fun TvPlayerIdleOverlay(
     focusRequest: TvIdleOverlayFocusRequest,
     onOpenHUD: () -> Unit,
     onOpenQuickSubtitles: () -> Unit,
+    skipLabel: String? = null,
+    onSkip: (() -> Unit)? = null,
     /** Non-null only while a next episode is resolved and not already shown. */
     onUpNext: (() -> Unit)? = null,
     onClose: () -> Unit,
@@ -3321,6 +3329,8 @@ private fun TvPlayerIdleOverlay(
                 onPlayPause = onPlayPause,
                 onSkipForward = onSkipForward,
                 onOpenQuickSubtitles = onOpenQuickSubtitles,
+                skipLabel = skipLabel,
+                onSkip = onSkip,
                 onUpNext = onUpNext,
                 onOpenHUD = onOpenHUD,
                 onClose = onClose,
@@ -3366,6 +3376,12 @@ private fun formatSleepCountdown(seconds: Int): String {
     } else {
         stringResource(CommonR.string.catalog_runtimeSeconds, sec)
     }
+}
+
+private fun manualMarkerSkipLabel(kind: ManualMarkerKind): Int = when (kind) {
+    ManualMarkerKind.Recap -> CommonR.string.marker_skipRecap
+    ManualMarkerKind.Intro -> CommonR.string.introSkip_pill_skip
+    ManualMarkerKind.Credits -> CommonR.string.marker_skipCredits
 }
 
 @Composable
@@ -4558,13 +4574,7 @@ private fun TvPlayerOverlays(
                     if (manualSkipTarget != null) {
                         TvMarkerSkipPill(
                             modifier = Modifier.onFocusChanged { onMarkerPillFocusChanged(it.hasFocus) },
-                            label = stringResource(
-                                when (manualSkipTarget.kind) {
-                                    ManualMarkerKind.Recap -> CommonR.string.marker_skipRecap
-                                    ManualMarkerKind.Intro -> CommonR.string.introSkip_pill_skip
-                                    ManualMarkerKind.Credits -> CommonR.string.marker_skipCredits
-                                },
-                            ),
+                            label = stringResource(manualMarkerSkipLabel(manualSkipTarget.kind)),
                             onSelect = onManualMarkerSelect,
                             onSeek = onSkipPillSeek,
                         )

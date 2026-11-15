@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.FastForward
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.SkipNext
@@ -72,6 +73,9 @@ fun TvPlayerTransportCluster(
     onPlayPause: () -> Unit,
     onSkipForward: () -> Unit,
     onOpenQuickSubtitles: () -> Unit,
+    /** Set only while the playhead is inside a skippable intro, recap or credits. */
+    skipLabel: String? = null,
+    onSkip: (() -> Unit)? = null,
     /**
      * Non-null only when there is a next episode to show. Mirrors
      * silo-apple#86: the automatic trigger fires at the credits, and this lets
@@ -133,14 +137,26 @@ fun TvPlayerTransportCluster(
 
         // Secondary group — pushed right.
         Row(verticalAlignment = Alignment.CenterVertically) {
+            if (skipLabel != null && onSkip != null) {
+                TransportIconButton(
+                    icon = Icons.Rounded.FastForward,
+                    description = skipLabel,
+                    label = skipLabel,
+                    onClick = onSkip,
+                    focusRequester = firstSecondaryFocus,
+                    leftNeighbor = skipForwardFocus,
+                    onMoveUp = onMoveUpToScrubber,
+                )
+                DockGap()
+            }
             onUpNext?.let { showUpNext ->
                 TransportIconButton(
                     icon = Icons.Rounded.SkipNext,
                     description = stringResource(CommonR.string.player_audio_upNext),
                     label = stringResource(CommonR.string.player_transport_upNext),
                     onClick = showUpNext,
-                    focusRequester = firstSecondaryFocus,
-                    leftNeighbor = skipForwardFocus,
+                    focusRequester = firstSecondaryFocus.takeIf { onSkip == null },
+                    leftNeighbor = skipForwardFocus.takeIf { onSkip == null },
                     onMoveUp = onMoveUpToScrubber,
                 )
                 DockGap()
@@ -151,8 +167,8 @@ fun TvPlayerTransportCluster(
                 label = stringResource(CommonR.string.player_hud_subtitles),
                 value = subtitlesValue,
                 onClick = onOpenQuickSubtitles,
-                focusRequester = firstSecondaryFocus.takeIf { onUpNext == null },
-                leftNeighbor = skipForwardFocus.takeIf { onUpNext == null },
+                focusRequester = firstSecondaryFocus.takeIf { onUpNext == null && onSkip == null },
+                leftNeighbor = skipForwardFocus.takeIf { onUpNext == null && onSkip == null },
                 onMoveUp = onMoveUpToScrubber,
             )
             DockGap()
