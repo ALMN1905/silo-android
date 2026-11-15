@@ -2513,8 +2513,10 @@ fun TvPlayerScreen(
                         // Only offered when there is something to advance to;
                         // the view model owns that predicate so the manual
                         // control and the automatic trigger cannot disagree.
+                        // Plays the next episode directly, like Play Now on the
+                        // Up Next card; the card is for the automatic trigger.
                         onUpNext = if (viewModel.canShowNextUpNow()) {
-                            { viewModel.onUserRequestedNextUp() }
+                            { viewModel.playNextEpisodeNow() }
                         } else {
                             null
                         },

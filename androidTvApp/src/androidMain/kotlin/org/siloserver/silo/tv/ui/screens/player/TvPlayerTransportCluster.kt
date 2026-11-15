@@ -75,7 +75,7 @@ fun TvPlayerTransportCluster(
     /**
      * Non-null only when there is a next episode to show. Mirrors
      * silo-apple#86: the automatic trigger fires at the credits, and this lets
-     * a viewer who is already done reach it early.
+     * a viewer who is already done play the next episode right away.
      */
     onUpNext: (() -> Unit)? = null,
     onOpenHUD: () -> Unit,
