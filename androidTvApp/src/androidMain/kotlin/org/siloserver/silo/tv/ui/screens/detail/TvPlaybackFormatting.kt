@@ -64,6 +64,8 @@ data class TvPlaybackText(
     val sizeMb: (size: String) -> String,
     /** A track name with a flag in parentheses ("English (SDH)"). */
     val trackWithFlag: (name: String, flag: String) -> String,
+    /** An audio track bitrate in kbps ("640kbps"); takes the formatted number. */
+    val bitrateKbps: (kbps: String) -> String,
 ) {
     constructor(resources: Resources) : this(
         auto = resources.getString(CommonR.string.detail_auto),
@@ -85,6 +87,7 @@ data class TvPlaybackText(
         sizeGb = { resources.getString(CommonR.string.detail_sizeGb, it) },
         sizeMb = { resources.getString(CommonR.string.detail_sizeMb, it) },
         trackWithFlag = { name, flag -> resources.getString(CommonR.string.detail_trackWithFlag, name, flag) },
+        bitrateKbps = { resources.getString(CommonR.string.detail_bitrateKbps, it) },
     )
 
     companion object {
@@ -109,6 +112,7 @@ data class TvPlaybackText(
             sizeGb = { "$it GB" },
             sizeMb = { "$it MB" },
             trackWithFlag = { name, flag -> "$name ($flag)" },
+            bitrateKbps = { "${it}kbps" },
         )
     }
 }
@@ -484,6 +488,7 @@ object TvPlaybackFormatting {
         val qualifier = usefulAudioTitle(track.title)?.takeIf { !summary.contains(it) && !namesLanguage(it, track.language) }
         return buildString {
             append(summary)
+            audioBitrateLabel(track, text)?.let { append(" · ").append(it) }
             if (qualifier != null) append(" · ").append(qualifier)
             if (track.isDefault) append(" · ").append(text.default)
         }
@@ -511,6 +516,10 @@ object TvPlaybackFormatting {
         return if (tokens.isEmpty()) audioTitle(track, ordinal, text) else tokens.joinToString(" · ")
     }
 
+    /** The server sends audio `bitrate` in kbps and omits it for some codecs (DTS-HD MA, FLAC). */
+    private fun audioBitrateLabel(track: AudioTrack, text: TvPlaybackText): String? =
+        track.bitrate?.takeIf { it > 0 }?.let { text.bitrateKbps(LocaleFormat.integer(it)) }
+
     /** Menu-row detail. Mirrors tvOS `audioDetail`: custom title (when it
      *  isn't already the row title), codec, layout, Default, Preferred. */
     private fun audioDetail(track: AudioTrack, ordinal: Int, version: FileVersion?, text: TvPlaybackText): String {
@@ -520,6 +529,7 @@ object TvPlaybackFormatting {
                 ?.let { add(it) }
             normalizedAudioCodec(track.codec)?.let { add(it) }
             compactAudioLayout(track, text)?.let { add(it) }
+            audioBitrateLabel(track, text)?.let { add(it) }
             if (track.isDefault) add(text.default)
             if (version?.effectiveAudioTrackIndex == ordinal) add(text.preferred)
         }
