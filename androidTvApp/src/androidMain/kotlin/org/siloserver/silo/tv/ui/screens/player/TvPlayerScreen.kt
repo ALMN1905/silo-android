@@ -142,6 +142,7 @@ import org.siloserver.silo.common.player.NoticeTone
 import org.siloserver.silo.common.player.PlayerNotice
 import org.siloserver.silo.common.player.video.markerSkipTarget
 import org.siloserver.silo.common.player.video.MarkerSkipTarget
+import org.siloserver.silo.common.player.video.ManualMarkerKind
 import org.siloserver.silo.common.player.video.skipLabelRes
 import org.siloserver.silo.common.player.SessionState
 import org.siloserver.silo.common.player.rememberPlayerSpinnerVisible
@@ -668,7 +669,10 @@ fun TvPlayerScreen(
         activeMarkerSkipTarget, canSeekInRoom, visibleIntroSkipState.isVisible,
         state.isLoading || state.error != null, qualityOfferVisible,
     )
-    val latestManualSkipTarget by rememberUpdatedState(manualSkipTarget)
+    // An intro is skipped by the timed pill and then by the transport-bar button, so only recap and
+    // credits keep an on-screen pill for their whole range.
+    val pillSkipTarget = manualSkipTarget?.takeUnless { it.kind == ManualMarkerKind.Intro }
+    val latestManualSkipTarget by rememberUpdatedState(pillSkipTarget)
     // The intro, recap and credits skip pills and Next Up outrank the
     // buffering pill: it hides (its timer frozen) while any of them shows.
     // As displayed: in a room the intro pill shows only to members who may
@@ -676,7 +680,7 @@ fun TvPlayerScreen(
     // no pill, so the buffering pill waits there the same way. Picture in
     // picture is reported on its own below: an undo pill runs on unseen
     // there. Leaving the player otherwise pauses or closes it.
-    val bufferingPillBlocked = visibleIntroSkipState.isVisible || manualSkipTarget != null ||
+    val bufferingPillBlocked = visibleIntroSkipState.isVisible || pillSkipTarget != null ||
         state.showNextUp || state.hudOpen
     LaunchedEffect(bufferingPillBlocked) {
         viewModel.onOtherPillDisplayed(bufferingPillBlocked)
@@ -797,7 +801,7 @@ fun TvPlayerScreen(
         refocus = refocusAfterSkipPillHides,
     )
     val onMarkerPillFocusChanged = rememberRefocusWhenPillHides(
-        visible = manualSkipTarget != null,
+        visible = pillSkipTarget != null,
         refocus = refocusAfterSkipPillHides,
     )
     val onBufferingPillFocusChanged: (TvBufferingPillAction?) -> Unit = remember(viewModel) {
@@ -2783,7 +2787,7 @@ fun TvPlayerScreen(
             nextUpCountdownTotalSeconds = state.nextUpCountdownTotalSeconds,
             autoPlayNextEnabled = autoPlayNextEnabled,
             introSkipState = visibleIntroSkipState,
-            manualSkipTarget = manualSkipTarget,
+            manualSkipTarget = pillSkipTarget,
             onManualMarkerSelect = { handleManualMarkerSelect() },
             onSkipPillSeek = { direction, hold -> handleSkipPillSeek(direction, hold) },
             onIntroPillFocusChanged = onIntroPillFocusChanged,
