@@ -127,6 +127,7 @@ val playerInfraModule = module {
             mediaAuthSession = get(),
             bandwidthMeter = get(),
             delayProcessor = get(),
+            centerBoostProcessor = get(),
             subtitleOffsetHolder = get(),
             libassBridge = get(),
             playbackAnalytics = get(),

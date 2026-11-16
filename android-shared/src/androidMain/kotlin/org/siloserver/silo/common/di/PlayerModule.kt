@@ -97,6 +97,13 @@ val playerModule = module {
     @OptIn(UnstableApi::class)
     single { DelayAudioProcessor() }
 
+    @OptIn(UnstableApi::class)
+    single {
+        org.siloserver.silo.common.player.audio.CenterBoostAudioProcessor(
+            androidContext().getSharedPreferences("silo_dialogue_boost", android.content.Context.MODE_PRIVATE),
+        )
+    }
+
     single { SubtitleOffsetHolder() }
 
     @OptIn(UnstableApi::class)

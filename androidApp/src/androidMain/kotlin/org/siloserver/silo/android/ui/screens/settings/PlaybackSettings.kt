@@ -5,6 +5,7 @@ import androidx.annotation.StringRes
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -253,7 +254,34 @@ fun PlaybackStreamingSection(
             checked = pictureInPictureEnabled,
             onCheckedChange = onPictureInPictureEnabledChanged,
         )
+
+        DialogueBoostRow()
     }
+}
+
+/** Device-local boost of the centre channel (dialogue); see the TV setting of the same name. */
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+@Composable
+private fun DialogueBoostRow() {
+    val processor: org.siloserver.silo.common.player.audio.CenterBoostAudioProcessor =
+        org.koin.compose.koinInject()
+    val gainDb by processor.gainDb.collectAsState()
+    val steps = org.siloserver.silo.common.player.audio.CenterBoostAudioProcessor.GAIN_STEPS_DB
+    val labels = steps.map { db ->
+        if (db == 0) {
+            stringResource(CommonR.string.settings_dialogueBoost_off)
+        } else {
+            stringResource(CommonR.string.settings_dialogueBoost_value, db)
+        }
+    }
+    SettingsIndexedDropdownRow(
+        label = stringResource(CommonR.string.settings_dialogueBoost_title),
+        value = labels[steps.indexOf(gainDb).coerceAtLeast(0)],
+        options = labels,
+        selectedIndex = steps.indexOf(gainDb),
+        onIndexSelected = { processor.setGainDb(steps[it]) },
+        description = stringResource(CommonR.string.settings_dialogueBoost_footer),
+    )
 }
 
 /**

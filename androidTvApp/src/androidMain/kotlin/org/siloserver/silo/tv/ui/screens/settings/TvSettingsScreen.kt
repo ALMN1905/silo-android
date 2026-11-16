@@ -1374,6 +1374,9 @@ private fun TvPlaybackSettingsPane(
             }
         }
         item {
+            TvDialogueBoostSettingsGroup()
+        }
+        item {
             SettingsGroup(title = stringResource(CommonR.string.settings_section_episodes)) {
                 SettingsToggleRow(
                     label = stringResource(CommonR.string.settings_control_autoplay),
@@ -3207,5 +3210,28 @@ private fun TvAppLanguageSettingsGroup(store: AppLanguageStore) {
             },
             onDismiss = { showPicker = false },
         )
+    }
+}
+
+/** Playback: a device-local boost of the centre channel (dialogue); Select steps through the levels. */
+@OptIn(androidx.media3.common.util.UnstableApi::class)
+@Composable
+private fun TvDialogueBoostSettingsGroup() {
+    val processor: org.siloserver.silo.common.player.audio.CenterBoostAudioProcessor = koinInject()
+    val gainDb by processor.gainDb.collectAsState()
+    SettingsGroup(title = stringResource(CommonR.string.settings_dialogueBoost_title)) {
+        SettingsValueRow(
+            label = stringResource(CommonR.string.settings_dialogueBoost_title),
+            value = if (gainDb == 0) {
+                stringResource(CommonR.string.settings_dialogueBoost_off)
+            } else {
+                stringResource(CommonR.string.settings_dialogueBoost_value, gainDb)
+            },
+            onClick = {
+                val steps = org.siloserver.silo.common.player.audio.CenterBoostAudioProcessor.GAIN_STEPS_DB
+                processor.setGainDb(steps[(steps.indexOf(gainDb) + 1) % steps.size])
+            },
+        )
+        SettingsFooterText(text = stringResource(CommonR.string.settings_dialogueBoost_footer))
     }
 }

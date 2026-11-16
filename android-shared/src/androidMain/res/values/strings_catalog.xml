@@ -7588,4 +7588,12 @@
     <string name="watchParty_whoSeen_watched">Watched</string>
     <!-- Roku, Android phone and TV: a member's status line in the who's-seen-it list when the title is on their watchlist. {state}: their watch status, such as Watched or Not watched. Apple (iPhone, iPad, Apple TV): same state on the picker's confirmation page. -->
     <string name="watchParty_whoSeen_watchlist">%1$s · Watchlist</string>
+    <!-- Settings > Playback: raises only the centre channel so voices stand out on stereo and 3.x speaker setups. Device-local. -->
+    <string name="settings_dialogueBoost_title">Dialogue boost</string>
+    <!-- Settings > Playback, Dialogue boost value when it is off. -->
+    <string name="settings_dialogueBoost_off">Off</string>
+    <!-- Settings > Playback, Dialogue boost value: the centre channel is raised by this many decibels. -->
+    <string name="settings_dialogueBoost_value">+%1$d dB</string>
+    <!-- Settings > Playback, help text under Dialogue boost. -->
+    <string name="settings_dialogueBoost_footer">Raises the centre channel only, so voices stand out on stereo and 3.x setups. It changes decoded audio; stereo tracks and audio sent to a receiver as passthrough are not changed.</string>
 </resources>

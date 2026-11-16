@@ -84,6 +84,7 @@ class SiloPlayerFactory(
     mediaAuthSession: MediaAuthSession,
     private val bandwidthMeter: DefaultBandwidthMeter,
     private val delayProcessor: DelayAudioProcessor,
+    private val centerBoostProcessor: org.siloserver.silo.common.player.audio.CenterBoostAudioProcessor,
     private val subtitleOffsetHolder: SubtitleOffsetHolder,
     private val libassBridge: LibassBridge,
     private val playbackAnalytics: PlaybackAnalyticsListener,
@@ -246,7 +247,7 @@ class SiloPlayerFactory(
         val audioSink: AudioSink = PassthroughSuppressingAudioSink(
             DefaultAudioSink.Builder(context)
                 .setAudioProcessorChain(
-                    DefaultAudioSink.DefaultAudioProcessorChain(delayProcessor),
+                    DefaultAudioSink.DefaultAudioProcessorChain(delayProcessor, centerBoostProcessor),
                 )
                 .build(),
             forceDecode = { format ->
