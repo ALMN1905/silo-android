@@ -3,6 +3,7 @@ package org.siloserver.silo.android.ui.screens.player
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -276,6 +277,7 @@ fun PlayerSettingsSheet(
                             onDecrease = { onSetAudioDelay((audioDelayMs - 50).coerceIn(-5000, 5000)) },
                             onIncrease = { onSetAudioDelay((audioDelayMs + 50).coerceIn(-5000, 5000)) },
                         )
+                        DialogueBoostStepperRow()
                         PlayerStepperRow(
                             label = stringResource(CommonR.string.player_settings_subtitleDelay),
                             detail = stringResource(
@@ -366,4 +368,26 @@ private fun formatDelayMs(ms: Int): String = when {
     ms == 0 -> "0 ms"
     ms > 0 -> "+$ms ms"
     else -> "−${-ms} ms"
+}
+
+/** Dialogue boost: raises only the centre channel; device-local, applies at once. */
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+@Composable
+private fun DialogueBoostStepperRow() {
+    val processor: org.siloserver.silo.common.player.audio.CenterBoostAudioProcessor =
+        org.koin.compose.koinInject()
+    val gainDb by processor.gainDb.collectAsState()
+    val steps = org.siloserver.silo.common.player.audio.CenterBoostAudioProcessor.GAIN_STEPS_DB
+    val index = steps.indexOf(gainDb).coerceAtLeast(0)
+    PlayerStepperRow(
+        label = stringResource(CommonR.string.settings_dialogueBoost_title),
+        detail = stringResource(CommonR.string.settings_dialogueBoost_footer),
+        value = if (gainDb == 0) {
+            stringResource(CommonR.string.settings_dialogueBoost_off)
+        } else {
+            stringResource(CommonR.string.settings_dialogueBoost_value, gainDb)
+        },
+        onDecrease = { processor.setGainDb(steps[(index - 1).coerceAtLeast(0)]) },
+        onIncrease = { processor.setGainDb(steps[(index + 1).coerceAtMost(steps.lastIndex)]) },
+    )
 }

@@ -54,6 +54,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -306,7 +307,8 @@ internal fun TvPlayerHud(
     // fall back to the default search instead.
     val paneEntryAvailable = when (selectedTab) {
         HudTab.Video, HudTab.Subtitles -> true
-        HudTab.Audio -> activeVersion?.audioTracks.orEmpty().size > 1 || audioDelayEnabled
+        // Dialogue boost is always there, so the pane always has a row to enter.
+        HudTab.Audio -> true
         HudTab.Chapters -> chapters.isNotEmpty()
         HudTab.Info, HudTab.Stats -> false
     }
@@ -1539,6 +1541,35 @@ private fun HudAudioPane(
                                 to = 1_000,
                                 step = 50,
                                 onSet = onAudioDelayChanged,
+                            ),
+                        )
+                    },
+                )
+
+                // Raises only the centre channel so voices stand out; device-local, takes effect at once.
+                val boostTitle = stringResource(CommonR.string.settings_dialogueBoost_title)
+                val boostOff = stringResource(CommonR.string.settings_dialogueBoost_off)
+                val boostSteps = org.siloserver.silo.common.player.audio.CenterBoostAudioProcessor.GAIN_STEPS_DB
+                val boostLabels = boostSteps.map { db ->
+                    if (db == 0) boostOff else stringResource(CommonR.string.settings_dialogueBoost_value, db)
+                }
+                val boost: org.siloserver.silo.common.player.audio.CenterBoostAudioProcessor =
+                    org.koin.compose.koinInject()
+                val boostDb by boost.gainDb.collectAsState()
+                HudFocusedSettingRow(
+                    label = boostTitle,
+                    value = boostLabels[boostSteps.indexOf(boostDb).coerceAtLeast(0)],
+                    enabled = enabled,
+                    entryFocusRequester = entryFocusRequester.takeIf { !trackSelectable && !audioDelayEnabled },
+                    onActivate = {
+                        onPresentPicker(
+                            HudPickerPresentation(
+                                title = boostTitle,
+                                options = boostSteps.mapIndexed { i, db ->
+                                    HudPickerOption(id = db.toString(), label = boostLabels[i])
+                                },
+                                selectedId = boostDb.toString(),
+                                onSelect = { id -> id.toIntOrNull()?.let(boost::setGainDb) },
                             ),
                         )
                     },
