@@ -5603,6 +5603,24 @@ class TvPlayerViewModel(
         advanceToNextEpisode()
     }
 
+    /**
+     * The transport bar's Next button: plays the next episode at once, without the
+     * Up Next card the automatic trigger shows. Like Play Now it counts as active
+     * watching, so it resets the pass-out streak.
+     */
+    fun playNextEpisodeDirectly() {
+        resetPassOutStreak()
+        nextUpCountdownJob?.cancel()
+        nextUpCountdownJob = null
+        if (!shouldNavigateToLocalNext(inWatchTogetherRoom = roomId != null)) return
+        if (shufflePlayback != null) {
+            advanceShuffle()
+            return
+        }
+        val next = _uiState.value.nextEpisode ?: return
+        playInPlace(next.contentId, targetFileId = null, showCard = false)
+    }
+
     private fun advanceToNextEpisode() {
         nextUpCountdownJob?.cancel()
         nextUpCountdownJob = null
