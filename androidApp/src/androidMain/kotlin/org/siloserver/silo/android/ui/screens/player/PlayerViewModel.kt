@@ -1194,6 +1194,11 @@ class PlayerViewModel(
     private var awaitingMediaMountGeneration: Long? = null
     private val subtitleRefreshGate = SubtitleRefreshGate()
     private var positionReportsBlockedForPendingLoad = false
+
+    // Whether Media3 reports the mounted item's window as seekable, once the
+    // screen's ticker has read a non-placeholder window. Cleared on every mount.
+    private var playerWindowFactsKnown = false
+    private var playerWindowIsSeekable = false
     private var seekRecoveryRollbackInvalidated = false
     private var pendingNativeSeekAfterMount: Pair<Double, Boolean>? = null
     private val quickSkipAccumulator = QuickSkipAccumulator()
@@ -3227,11 +3232,20 @@ class PlayerViewModel(
 
     fun claimSubtitleRefresh(nonce: Int): Boolean = subtitleRefreshGate.claim(nonce)
 
+    /** Window facts of the mounted item, from the screen's 500ms ticker. */
+    fun onPlayerWindowChanged(isSeekable: Boolean) {
+        if (positionReportsBlockedForPendingLoad || awaitingMediaMountGeneration != null) return
+        playerWindowIsSeekable = isSeekable
+        playerWindowFactsKnown = true
+    }
+
     fun onMediaMountApplied(generation: Long) {
         if (awaitingMediaMountGeneration == generation) {
             awaitingMediaMountGeneration = null
             subtitleRefreshGate.reset()
             positionReportsBlockedForPendingLoad = false
+            playerWindowFactsKnown = false
+            playerWindowIsSeekable = false
             if (inRoom) resetRoomEngineToMount()
             adoptBufferingQualityPlan(generation)
             pendingNativeSeekAfterMount?.let { (targetSeconds, immediate) ->
@@ -3652,6 +3666,29 @@ class PlayerViewModel(
                 startSeekReanchor(targetSourceSec, "${decision.reason}")
             }
             is PlaybackSeekDecision.NativeSeek -> {
+                if (playerWindowFactsKnown && !playerWindowIsSeekable) {
+                    // The server claims a native seek works, but Media3 reports the
+                    // mounted file as unseekable (e.g. an MKV whose Cues sit behind a
+                    // second SeekHead), so Player.seekTo would never land. A plain
+                    // seek_reanchor keeps the direct route eligible; report the seek
+                    // as failed so the server excludes this route and picks another.
+                    Log.i(
+                        TAG,
+                        "seek_commit seek_id=$activeSeekId action=seek_failure_recovery " +
+                            "target_source_seconds=$targetSourceSec reason=mounted_window_unseekable",
+                    )
+                    DiagnosticsPlaybackLogger.seek(
+                        DiagnosticsSeekEvent.CommittedServerReanchor,
+                        reason = "MountedWindowUnseekable",
+                    )
+                    startSeekFailureRecovery(
+                        targetSourceSec = targetSourceSec,
+                        classification = "player_failure",
+                        notice = "The mounted file is not seekable",
+                        diagnostics = mapOf("reason" to "mounted_window_unseekable"),
+                    )
+                    return
+                }
                 Log.i(
                     TAG,
                     "seek_commit seek_id=$activeSeekId action=native " +

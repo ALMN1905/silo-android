@@ -65,6 +65,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.media3.common.C
 import androidx.media3.common.Player
+import androidx.media3.common.Timeline
 import org.siloserver.silo.common.player.PlayWhenReadyReconciliationGate
 import org.siloserver.silo.android.ui.components.rememberVideoSeekIntervals
 import org.siloserver.silo.android.cast.GOOGLE_CAST_LEGACY_SEEK_INTERVALS
@@ -1471,6 +1472,13 @@ fun PlayerScreen(
                         controller.duration,
                         controller.bufferedPosition.coerceAtLeast(0L),
                     )
+                    // A placeholder window (source not prepared yet) says nothing
+                    // about seekability, so it is not reported.
+                    val timeline = controller.currentTimeline
+                    if (!timeline.isEmpty) {
+                        val window = timeline.getWindow(controller.currentMediaItemIndex, Timeline.Window())
+                        if (!window.isPlaceholder) viewModel.onPlayerWindowChanged(window.isSeekable)
+                    }
                 }
                 delay(500)
             }
