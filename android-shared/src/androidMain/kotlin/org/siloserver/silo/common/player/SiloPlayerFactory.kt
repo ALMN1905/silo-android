@@ -342,6 +342,12 @@ class SiloPlayerFactory(
                     // decoder and goes back to the server, which beats silence.
                     preferFfmpegAudio && !requiresSecureDecoder &&
                         HdmiSinkDtsSupport.shouldDecodeWithFfmpeg(context, mimeType) -> emptyList()
+                    // Passthrough is off: decode with FFmpeg, which outputs the track's
+                    // own channels as PCM, instead of a platform decoder (an Amlogic
+                    // E-AC-3 decoder gave Dialogue boost no effect on one title).
+                    preferFfmpegAudio && !requiresSecureDecoder &&
+                        passthroughPreference.passthroughDisabled.value &&
+                        FfmpegAudioSupport.supportsMimeType(mimeType) -> emptyList()
                     else -> infos
                 }
             }
