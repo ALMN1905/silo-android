@@ -256,7 +256,22 @@ fun PlaybackStreamingSection(
         )
 
         DialogueBoostRow()
+        AudioPassthroughRow()
     }
+}
+
+/** Device-local switch that decodes encoded audio in the app instead of passing it through. */
+@Composable
+private fun AudioPassthroughRow() {
+    val preference: org.siloserver.silo.common.player.audio.AudioPassthroughPreference =
+        org.koin.compose.koinInject()
+    val disabled by preference.passthroughDisabled.collectAsState()
+    SettingsSwitchRow(
+        label = stringResource(CommonR.string.settings_audioPassthrough_off_title),
+        checked = disabled,
+        onCheckedChange = preference::setPassthroughDisabled,
+        description = stringResource(CommonR.string.settings_audioPassthrough_off_footer),
+    )
 }
 
 /** Device-local boost of the centre channel (dialogue); see the TV setting of the same name. */

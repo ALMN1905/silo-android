@@ -1377,6 +1377,9 @@ private fun TvPlaybackSettingsPane(
             TvDialogueBoostSettingsGroup()
         }
         item {
+            TvAudioPassthroughSettingsGroup()
+        }
+        item {
             SettingsGroup(title = stringResource(CommonR.string.settings_section_episodes)) {
                 SettingsToggleRow(
                     label = stringResource(CommonR.string.settings_control_autoplay),
@@ -3210,6 +3213,21 @@ private fun TvAppLanguageSettingsGroup(store: AppLanguageStore) {
             },
             onDismiss = { showPicker = false },
         )
+    }
+}
+
+/** Playback: a device-local switch that decodes encoded audio in the app instead of passing it through. */
+@Composable
+private fun TvAudioPassthroughSettingsGroup() {
+    val preference: org.siloserver.silo.common.player.audio.AudioPassthroughPreference = koinInject()
+    val disabled by preference.passthroughDisabled.collectAsState()
+    SettingsGroup(title = stringResource(CommonR.string.settings_audioPassthrough_off_title)) {
+        SettingsToggleRow(
+            label = stringResource(CommonR.string.settings_audioPassthrough_off_title),
+            checked = disabled,
+            onCheckedChange = preference::setPassthroughDisabled,
+        )
+        SettingsFooterText(text = stringResource(CommonR.string.settings_audioPassthrough_off_footer))
     }
 }
 

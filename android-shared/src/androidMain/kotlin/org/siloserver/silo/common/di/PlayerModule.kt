@@ -104,6 +104,12 @@ val playerModule = module {
         )
     }
 
+    single {
+        org.siloserver.silo.common.player.audio.AudioPassthroughPreference(
+            androidContext().getSharedPreferences("silo_audio_passthrough", android.content.Context.MODE_PRIVATE),
+        )
+    }
+
     single { SubtitleOffsetHolder() }
 
     @OptIn(UnstableApi::class)

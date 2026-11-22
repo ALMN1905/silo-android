@@ -7596,4 +7596,8 @@
     <string name="settings_dialogueBoost_value">+%1$d dB</string>
     <!-- Settings > Playback, help text under Dialogue boost. -->
     <string name="settings_dialogueBoost_footer">Makes voices louder in surround audio. Stereo tracks and passthrough audio are not changed.</string>
+    <!-- Settings > Playback: when on, Dolby and DTS audio is decoded by the app instead of being sent to the TV or receiver as a bitstream. Device-local. -->
+    <string name="settings_audioPassthrough_off_title">Turn off audio passthrough</string>
+    <!-- Settings > Playback, help text under the audio passthrough switch. -->
+    <string name="settings_audioPassthrough_off_footer">Decodes Dolby and DTS audio in the app instead of sending it to the TV or receiver. Use it with Dialogue boost, which only works on decoded audio. Dolby Atmos and receiver decoding are lost. Applies from the next playback.</string>
 </resources>

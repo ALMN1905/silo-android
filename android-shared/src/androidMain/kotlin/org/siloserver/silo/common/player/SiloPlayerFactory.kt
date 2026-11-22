@@ -85,6 +85,7 @@ class SiloPlayerFactory(
     private val bandwidthMeter: DefaultBandwidthMeter,
     private val delayProcessor: DelayAudioProcessor,
     private val centerBoostProcessor: org.siloserver.silo.common.player.audio.CenterBoostAudioProcessor,
+    private val passthroughPreference: org.siloserver.silo.common.player.audio.AudioPassthroughPreference,
     private val subtitleOffsetHolder: SubtitleOffsetHolder,
     private val libassBridge: LibassBridge,
     private val playbackAnalytics: PlaybackAnalyticsListener,
@@ -251,8 +252,15 @@ class SiloPlayerFactory(
                 )
                 .build(),
             forceDecode = { format ->
-                preferFfmpegAudio &&
-                    HdmiSinkDtsSupport.shouldDecodeWithFfmpeg(context, format.sampleMimeType)
+                preferFfmpegAudio && (
+                    HdmiSinkDtsSupport.shouldDecodeWithFfmpeg(context, format.sampleMimeType) ||
+                        // The user turned passthrough off: decode any encoded format
+                        // the packaged FFmpeg can (PCM is not in its list, so it is left alone).
+                        (
+                            passthroughPreference.passthroughDisabled.value &&
+                                format.sampleMimeType?.let(FfmpegAudioSupport::supportsMimeType) == true
+                            )
+                    )
             },
         )
 
