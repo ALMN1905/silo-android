@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import org.siloserver.silo.common.ui.LanguageNames
 import org.siloserver.silo.common.player.allowsAudioDelay
+import org.siloserver.silo.common.player.video.ManualMarkerKind
 import org.siloserver.silo.common.player.video.markerSkipTarget
 import org.siloserver.silo.common.player.video.skipLabelRes
 import androidx.compose.ui.res.pluralStringResource
@@ -585,7 +586,11 @@ fun PlayerOverlay(
 
         if (!state.showUpNext && !introSkipState.isVisible && seekEnabled && !state.isLoading) {
             val target = markerSkipTarget(state.position, state.markerTimeline, includeIntro = true)
-            if (target != null) {
+            // Recap and Credits keep their always-on pill. An intro gets the timed
+            // prompt first; after it the skip button comes back only with the
+            // controls, so a missed prompt can still be skipped without leaving
+            // a pill over the picture for the whole intro.
+            if (target != null && (target.kind != ManualMarkerKind.Intro || controlsShown)) {
                 Box(modifier = bottomEndSlotModifier, contentAlignment = Alignment.BottomEnd) {
                     MarkerSkipPill(
                         label = stringResource(target.kind.skipLabelRes()),
