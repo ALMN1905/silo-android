@@ -136,8 +136,8 @@ fun TvPlayerTransportCluster(
             onUpNext?.let { showUpNext ->
                 TransportIconButton(
                     icon = Icons.Rounded.SkipNext,
-                    description = stringResource(CommonR.string.player_audio_upNext),
-                    label = stringResource(CommonR.string.player_transport_upNext),
+                    description = stringResource(CommonR.string.upNext_nextEpisode),
+                    label = stringResource(CommonR.string.upNext_nextEpisode),
                     onClick = showUpNext,
                     focusRequester = firstSecondaryFocus,
                     leftNeighbor = skipForwardFocus,
