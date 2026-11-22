@@ -2873,6 +2873,10 @@ private fun TvPlayerCommandEffects(
                         player.currentMediaItemIndex,
                         timelineWindow,
                     )
+                }
+                // A placeholder window (source not prepared yet) says nothing
+                // about seekability, so it is not reported.
+                if (!player.currentTimeline.isEmpty && !timelineWindow.isPlaceholder) {
                     viewModel.onPlayerWindowChanged(
                         isSeekable = timelineWindow.isSeekable,
                         windowEndPlayerMs = if (timelineWindow.durationUs != C.TIME_UNSET) {

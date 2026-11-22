@@ -1217,6 +1217,11 @@ class TvPlayerViewModel(
     private var playerWindowIsSeekable = false
     private var playerWindowEndPlayerMs = -1L
 
+    // True once the poll has read a non-placeholder window of the mounted item,
+    // so `playerWindowIsSeekable == false` means "Media3 says unseekable" and
+    // not "not read yet".
+    private var playerWindowFactsKnown = false
+
     // ---- Watch Party ----------------------------------------------------------
     // Declared ahead of init: the room observation collector and the sleep
     // timer callback installed there touch these.
@@ -2631,6 +2636,7 @@ class TvPlayerViewModel(
             // absent, which at worst costs an unnecessary reanchor.
             playerWindowIsSeekable = false
             playerWindowEndPlayerMs = -1L
+            playerWindowFactsKnown = false
             adoptBufferingQualityPlan(nonce)
             roomMountAppliedAtMs = SystemClock.elapsedRealtime()
             roomMountGeneration++
@@ -3842,6 +3848,7 @@ class TvPlayerViewModel(
         if (transportMountGate.suppressPositionReports) return
         playerWindowIsSeekable = isSeekable
         playerWindowEndPlayerMs = windowEndPlayerMs
+        playerWindowFactsKnown = true
     }
 
     fun onPositionChanged(positionMs: Long, durationMs: Long) {
@@ -4507,6 +4514,23 @@ class TvPlayerViewModel(
                 startSeekReanchor(targetSourceSec, "${decision.reason}")
             }
             is PlaybackSeekDecision.NativeSeek -> {
+                if (playerWindowFactsKnown && !playerWindowIsSeekable) {
+                    // The server claims a native seek works, but Media3 reports the
+                    // mounted file as unseekable (e.g. an MKV whose Cues sit behind a
+                    // second SeekHead, which MatroskaExtractor does not follow), so
+                    // Player.seekTo would restart at 0. Ask the server to reanchor.
+                    Log.i(
+                        TAG,
+                        "seek_commit seek_id=$activeSeekId action=server_reanchor " +
+                            "target_source_seconds=$targetSourceSec reason=mounted_window_unseekable",
+                    )
+                    DiagnosticsPlaybackLogger.seek(
+                        DiagnosticsSeekEvent.CommittedServerReanchor,
+                        reason = "MountedWindowUnseekable",
+                    )
+                    startSeekReanchor(targetSourceSec, "mounted_window_unseekable")
+                    return
+                }
                 Log.i(
                     TAG,
                     "seek_commit seek_id=$activeSeekId action=native " +
