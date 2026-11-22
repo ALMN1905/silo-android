@@ -4518,17 +4518,24 @@ class TvPlayerViewModel(
                     // The server claims a native seek works, but Media3 reports the
                     // mounted file as unseekable (e.g. an MKV whose Cues sit behind a
                     // second SeekHead, which MatroskaExtractor does not follow), so
-                    // Player.seekTo would restart at 0. Ask the server to reanchor.
+                    // Player.seekTo would restart at 0. A plain seek_reanchor keeps the
+                    // same direct route eligible and gets the same file back; report the
+                    // seek as failed so the server excludes this route and picks another.
                     Log.i(
                         TAG,
-                        "seek_commit seek_id=$activeSeekId action=server_reanchor " +
+                        "seek_commit seek_id=$activeSeekId action=seek_failure_recovery " +
                             "target_source_seconds=$targetSourceSec reason=mounted_window_unseekable",
                     )
                     DiagnosticsPlaybackLogger.seek(
                         DiagnosticsSeekEvent.CommittedServerReanchor,
                         reason = "MountedWindowUnseekable",
                     )
-                    startSeekReanchor(targetSourceSec, "mounted_window_unseekable")
+                    startSeekFailureRecovery(
+                        targetSourceSec = targetSourceSec,
+                        classification = "player_failure",
+                        notice = "The mounted file is not seekable",
+                        diagnostics = mapOf("reason" to "mounted_window_unseekable"),
+                    )
                     return
                 }
                 Log.i(
