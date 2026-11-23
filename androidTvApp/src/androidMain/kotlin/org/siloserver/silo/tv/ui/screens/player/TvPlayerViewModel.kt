@@ -239,6 +239,13 @@ private const val PLAYBACK_PAUSE_GRACE_MS = 1_500L
  */
 private const val UNSEEKABLE_START_RECOVERY_MIN_SECONDS = 2.0
 
+/**
+ * Wait before reporting the failed start. A new mount makes the app replan for its audio and
+ * subtitle tracks in its first half second, and a recovery that overlaps those replans is refused
+ * ("seek recovery cannot change selected tracks"); a newer mount cancels the wait.
+ */
+private const val UNSEEKABLE_START_RECOVERY_DELAY_MS = 1_500L
+
 /** Reduced to the fields that can identify the track across index spaces. */
 internal fun PlayerTrackEntry.toMountedAudioTrack(): MountedAudioTrack = MountedAudioTrack(
     ordinal = index,
@@ -1233,6 +1240,7 @@ class TvPlayerViewModel(
     // recovery to one try per loaded item, so a route that stays unseekable cannot loop.
     private var pendingStartPositionSourceSec: Double? = null
     private var startPositionRecoveryAttempted = false
+    private var startPositionRecoveryJob: Job? = null
 
     // ---- Watch Party ----------------------------------------------------------
     // Declared ahead of init: the room observation collector and the sleep
@@ -2649,6 +2657,7 @@ class TvPlayerViewModel(
             playerWindowIsSeekable = false
             playerWindowEndPlayerMs = -1L
             playerWindowFactsKnown = false
+            startPositionRecoveryJob?.cancel()
             _uiState.value.let { mounted ->
                 pendingStartPositionSourceSec = (
                     mounted.playbackPlan?.timeline?.sourcePositionForPlayer(mounted.startPosition)
@@ -2716,6 +2725,7 @@ class TvPlayerViewModel(
     ) {
         startPositionRecoveryAttempted = false
         pendingStartPositionSourceSec = null
+        startPositionRecoveryJob?.cancel()
         // A Watch Party only ever starts the room's exact file and position.
         // Retry, the reachability retries and the 404 renewal all come through
         // here and reuse the room context; before the room has supplied one
@@ -3874,22 +3884,26 @@ class TvPlayerViewModel(
             if (!isSeekable && !startPositionRecoveryAttempted) {
                 // The mount asked Media3 to start at startSourceSec, which an unseekable file
                 // cannot do: report it as a failed seek so the server moves off this route.
-                startPositionRecoveryAttempted = true
-                Log.i(
-                    TAG,
-                    "start_position_recovery target_source_seconds=$startSourceSec " +
-                        "reason=mounted_window_unseekable",
-                )
-                DiagnosticsPlaybackLogger.seek(
-                    DiagnosticsSeekEvent.CommittedServerReanchor,
-                    reason = "MountedWindowUnseekableAtStart",
-                )
-                startSeekFailureRecovery(
-                    targetSourceSec = startSourceSec,
-                    classification = "player_failure",
-                    notice = "The mounted file is not seekable",
-                    diagnostics = mapOf("reason" to "mounted_window_unseekable_at_start"),
-                )
+                startPositionRecoveryJob = viewModelScope.launch {
+                    delay(UNSEEKABLE_START_RECOVERY_DELAY_MS)
+                    // Marked only now: a newer mount cancels the wait above and must be able to retry.
+                    startPositionRecoveryAttempted = true
+                    Log.i(
+                        TAG,
+                        "start_position_recovery target_source_seconds=$startSourceSec " +
+                            "reason=mounted_window_unseekable",
+                    )
+                    DiagnosticsPlaybackLogger.seek(
+                        DiagnosticsSeekEvent.CommittedServerReanchor,
+                        reason = "MountedWindowUnseekableAtStart",
+                    )
+                    startSeekFailureRecovery(
+                        targetSourceSec = startSourceSec,
+                        classification = "player_failure",
+                        notice = "The mounted file is not seekable",
+                        diagnostics = mapOf("reason" to "mounted_window_unseekable_at_start"),
+                    )
+                }
             }
         }
     }
