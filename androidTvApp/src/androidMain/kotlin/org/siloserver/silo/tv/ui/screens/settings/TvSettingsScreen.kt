@@ -1136,6 +1136,9 @@ private fun TvGeneralSettingsPane(
                 SettingsFooterText(
                     text = stringResource(CommonR.string.settings_topMenu_footer),
                 )
+                SettingsFooterText(
+                    text = stringResource(CommonR.string.settings_topMenu_tabPerLibrary_footer),
+                )
             }
         }
         item {
