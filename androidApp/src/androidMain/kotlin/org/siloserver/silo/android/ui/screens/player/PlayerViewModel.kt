@@ -474,6 +474,10 @@ class PlayerViewModel(
         private val SEEK_FAILED_MESSAGE = PlayerMessage.Res(CommonR.string.player_error_seekFailed)
         private val SEEK_UNSUPPORTED_MESSAGE = PlayerMessage.Res(CommonR.string.player_error_seekUnsupported)
         private const val CONTROLS_AUTO_HIDE_MS = 3_000L
+
+        // A mount that starts later than this needs Media3 to seek to its start position, so an
+        // unseekable file can silently ignore it (the film then starts at 0:00).
+        private const val UNSEEKABLE_START_RECOVERY_MIN_SECONDS = 2.0
         // Record a durable position roughly every 10s of content time (matches the
         // server reporter cadence) to bound DB/outbox churn.
         private const val POSITION_RECORD_INTERVAL_SEC = 10.0
@@ -1199,6 +1203,12 @@ class PlayerViewModel(
     // screen's ticker has read a non-placeholder window. Cleared on every mount.
     private var playerWindowFactsKnown = false
     private var playerWindowIsSeekable = false
+
+    // Start position (source seconds) of the mount that just applied, kept until the first window
+    // report says whether Media3 could seek to it. [startPositionRecoveryAttempted] limits the
+    // recovery to one try per loaded item, so a route that stays unseekable cannot loop.
+    private var pendingStartPositionSourceSec: Double? = null
+    private var startPositionRecoveryAttempted = false
     private var seekRecoveryRollbackInvalidated = false
     private var pendingNativeSeekAfterMount: Pair<Double, Boolean>? = null
     private val quickSkipAccumulator = QuickSkipAccumulator()
@@ -1683,6 +1693,8 @@ class PlayerViewModel(
         // file, never plays a download, and starts paused.
         room: WatchPartyPlaybackContext? = currentRoomContext,
     ) {
+        startPositionRecoveryAttempted = false
+        pendingStartPositionSourceSec = null
         if (room != null &&
             (contentId != room.contentId || preferredFileId != room.fileId || libraryId != room.libraryId)
         ) {
@@ -3237,6 +3249,30 @@ class PlayerViewModel(
         if (positionReportsBlockedForPendingLoad || awaitingMediaMountGeneration != null) return
         playerWindowIsSeekable = isSeekable
         playerWindowFactsKnown = true
+        pendingStartPositionSourceSec?.let { startSourceSec ->
+            pendingStartPositionSourceSec = null
+            if (!isSeekable && !startPositionRecoveryAttempted) {
+                // The mount asked Media3 to start at startSourceSec, which an unseekable file
+                // cannot do: report it as a failed seek so the server moves off this route.
+                startPositionRecoveryAttempted = true
+                if (activeSeekId == null) activeSeekId = ++seekSequence
+                Log.i(
+                    TAG,
+                    "start_position_recovery seek_id=$activeSeekId " +
+                        "target_source_seconds=$startSourceSec reason=mounted_window_unseekable",
+                )
+                DiagnosticsPlaybackLogger.seek(
+                    DiagnosticsSeekEvent.CommittedServerReanchor,
+                    reason = "MountedWindowUnseekableAtStart",
+                )
+                startSeekFailureRecovery(
+                    targetSourceSec = startSourceSec,
+                    classification = "player_failure",
+                    notice = "The mounted file is not seekable",
+                    diagnostics = mapOf("reason" to "mounted_window_unseekable_at_start"),
+                )
+            }
+        }
     }
 
     fun onMediaMountApplied(generation: Long) {
@@ -3246,6 +3282,12 @@ class PlayerViewModel(
             positionReportsBlockedForPendingLoad = false
             playerWindowFactsKnown = false
             playerWindowIsSeekable = false
+            _uiState.value.let { mounted ->
+                pendingStartPositionSourceSec = (
+                    mounted.playbackPlan?.timeline?.sourcePositionForPlayer(mounted.startPosition)
+                        ?: mounted.startPosition
+                    ).takeIf { it >= UNSEEKABLE_START_RECOVERY_MIN_SECONDS }
+            }
             if (inRoom) resetRoomEngineToMount()
             adoptBufferingQualityPlan(generation)
             pendingNativeSeekAfterMount?.let { (targetSeconds, immediate) ->

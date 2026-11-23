@@ -233,6 +233,12 @@ internal const val TV_SUBTITLE_LOG_TAG = "TvSubtitle"
  */
 private const val PLAYBACK_PAUSE_GRACE_MS = 1_500L
 
+/**
+ * A mount that starts later than this needs Media3 to seek to its start position, so an
+ * unseekable file can silently ignore it (the film then starts at 0:00).
+ */
+private const val UNSEEKABLE_START_RECOVERY_MIN_SECONDS = 2.0
+
 /** Reduced to the fields that can identify the track across index spaces. */
 internal fun PlayerTrackEntry.toMountedAudioTrack(): MountedAudioTrack = MountedAudioTrack(
     ordinal = index,
@@ -1221,6 +1227,12 @@ class TvPlayerViewModel(
     // so `playerWindowIsSeekable == false` means "Media3 says unseekable" and
     // not "not read yet".
     private var playerWindowFactsKnown = false
+
+    // Start position (source seconds) of the mount that just applied, kept until the first window
+    // report says whether Media3 could seek to it. [startPositionRecoveryAttempted] limits the
+    // recovery to one try per loaded item, so a route that stays unseekable cannot loop.
+    private var pendingStartPositionSourceSec: Double? = null
+    private var startPositionRecoveryAttempted = false
 
     // ---- Watch Party ----------------------------------------------------------
     // Declared ahead of init: the room observation collector and the sleep
@@ -2637,6 +2649,12 @@ class TvPlayerViewModel(
             playerWindowIsSeekable = false
             playerWindowEndPlayerMs = -1L
             playerWindowFactsKnown = false
+            _uiState.value.let { mounted ->
+                pendingStartPositionSourceSec = (
+                    mounted.playbackPlan?.timeline?.sourcePositionForPlayer(mounted.startPosition)
+                        ?: mounted.startPosition
+                    ).takeIf { it >= UNSEEKABLE_START_RECOVERY_MIN_SECONDS }
+            }
             adoptBufferingQualityPlan(nonce)
             roomMountAppliedAtMs = SystemClock.elapsedRealtime()
             roomMountGeneration++
@@ -2696,6 +2714,8 @@ class TvPlayerViewModel(
         // visible until the replacement has won ownership and is ready.
         preserveCurrentPlaybackOnFailure: Boolean = false,
     ) {
+        startPositionRecoveryAttempted = false
+        pendingStartPositionSourceSec = null
         // A Watch Party only ever starts the room's exact file and position.
         // Retry, the reachability retries and the 404 renewal all come through
         // here and reuse the room context; before the room has supplied one
@@ -3849,6 +3869,29 @@ class TvPlayerViewModel(
         playerWindowIsSeekable = isSeekable
         playerWindowEndPlayerMs = windowEndPlayerMs
         playerWindowFactsKnown = true
+        pendingStartPositionSourceSec?.let { startSourceSec ->
+            pendingStartPositionSourceSec = null
+            if (!isSeekable && !startPositionRecoveryAttempted) {
+                // The mount asked Media3 to start at startSourceSec, which an unseekable file
+                // cannot do: report it as a failed seek so the server moves off this route.
+                startPositionRecoveryAttempted = true
+                Log.i(
+                    TAG,
+                    "start_position_recovery target_source_seconds=$startSourceSec " +
+                        "reason=mounted_window_unseekable",
+                )
+                DiagnosticsPlaybackLogger.seek(
+                    DiagnosticsSeekEvent.CommittedServerReanchor,
+                    reason = "MountedWindowUnseekableAtStart",
+                )
+                startSeekFailureRecovery(
+                    targetSourceSec = startSourceSec,
+                    classification = "player_failure",
+                    notice = "The mounted file is not seekable",
+                    diagnostics = mapOf("reason" to "mounted_window_unseekable_at_start"),
+                )
+            }
+        }
     }
 
     fun onPositionChanged(positionMs: Long, durationMs: Long) {
