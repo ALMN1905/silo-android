@@ -283,6 +283,8 @@ fun PlayerControls(
                     onOpenTracks = onOpenTracks,
                     onOpenChapters = onOpenChapters,
                     onOpenQuality = onOpenQuality,
+                    // Tabletop has its own Next button in the lower pane.
+                    onPlayNextEpisode = onPlayNextEpisode.takeIf { nextEpisode != null && !tabletopMode },
                     onOpenSettings = onOpenSettings,
                     modifier = Modifier.alpha(chromeAlpha),
                 )
@@ -528,6 +530,8 @@ private fun PlayerActionPillRow(
     onOpenTracks: () -> Unit,
     onOpenChapters: () -> Unit,
     onOpenQuality: () -> Unit,
+    /** Plays the next episode; null when there is none to offer. */
+    onPlayNextEpisode: (() -> Unit)?,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -568,6 +572,14 @@ private fun PlayerActionPillRow(
                         modifier = Modifier.weight(1f, fill = false),
                     )
                 }
+            }
+            onPlayNextEpisode?.let { playNext ->
+                PlayerActionPill(
+                    icon = Icons.Rounded.SkipNext,
+                    label = stringResource(CommonR.string.upNext_nextEpisode),
+                    compact = density == ActionPillDensity.Icons,
+                    onClick = playNext,
+                )
             }
             if (hasQualityMenu) {
                 PlayerActionPill(
