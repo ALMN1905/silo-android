@@ -2443,6 +2443,12 @@ fun TvPlayerScreen(
                             .firstOrNull { row -> row.checked }
                             ?.let { row -> tvSubtitleRowParts(row.label).title }
                             ?: stringResource(CommonR.string.player_tracks_subtitlesOff),
+                        skipLabel = manualSkipTarget?.let { stringResource(it.kind.skipLabelRes()) },
+                        onSkip = if (manualSkipTarget != null) {
+                            { handleManualMarkerSelect() }
+                        } else {
+                            null
+                        },
                         positionSec = clock.position,
                         durationSec = clock.duration,
                         isPaused = state.isPaused,
@@ -3120,6 +3126,8 @@ private fun TvPlayerIdleOverlay(
     focusRequest: TvIdleOverlayFocusRequest,
     onOpenHUD: () -> Unit,
     onOpenQuickSubtitles: () -> Unit,
+    skipLabel: String? = null,
+    onSkip: (() -> Unit)? = null,
     /** Non-null only while a next episode is resolved and not already shown. */
     onUpNext: (() -> Unit)? = null,
     onClose: () -> Unit,
@@ -3321,6 +3329,8 @@ private fun TvPlayerIdleOverlay(
                 onPlayPause = onPlayPause,
                 onSkipForward = onSkipForward,
                 onOpenQuickSubtitles = onOpenQuickSubtitles,
+                skipLabel = skipLabel,
+                onSkip = onSkip,
                 onUpNext = onUpNext,
                 onOpenHUD = onOpenHUD,
                 onClose = onClose,
