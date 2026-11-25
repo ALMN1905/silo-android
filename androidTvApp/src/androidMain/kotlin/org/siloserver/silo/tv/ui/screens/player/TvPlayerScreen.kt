@@ -674,6 +674,10 @@ fun TvPlayerScreen(
         state.isLoading || state.error != null, qualityOfferVisible,
     )?.takeIf { it.kind != ManualMarkerKind.Intro || state.showControls }
     val latestManualSkipTarget by rememberUpdatedState(manualSkipTarget)
+    // Shared by whichever skip pill is showing, so Down leaves it for the
+    // progress bar and Up from the bar comes back.
+    val skipPillFocus = remember { FocusRequester() }
+    val skipPillShown = visibleIntroSkipState.isVisible || manualSkipTarget != null
     // The intro, recap and credits skip pills and Next Up outrank the
     // buffering pill: it hides (its timer frozen) while any of them shows.
     // As displayed: in a room the intro pill shows only to members who may
@@ -2495,6 +2499,16 @@ fun TvPlayerScreen(
                         onCancelScrub = { viewModel.cancelScrub() },
                         focusRequest = idleOverlayFocusRequest,
                         yieldTransportFocus = manualSkipTarget?.kind == ManualMarkerKind.Intro,
+                        onMoveUpToSkipPill = if (skipPillShown) {
+                            {
+                                skipPillFocus.claimFocusOrReport(
+                                    target = "player_skip_pill",
+                                    action = "scrubber_move_up",
+                                )
+                            }
+                        } else {
+                            null
+                        },
                         onPlayPause = {
                             // In a room every press goes to the room, which
                             // applies it or refuses with a notice, like the
@@ -2786,6 +2800,12 @@ fun TvPlayerScreen(
             manualSkipTarget = manualSkipTarget,
             onManualMarkerSelect = { handleManualMarkerSelect() },
             onSkipPillSeek = { direction, hold -> handleSkipPillSeek(direction, hold) },
+            skipPillFocus = skipPillFocus,
+            onSkipPillMoveDown = if (state.showControls) {
+                { requestIdleOverlayFocus(TvIdleOverlayFocusTarget.Scrubber) }
+            } else {
+                null
+            },
             onIntroPillFocusChanged = onIntroPillFocusChanged,
             onMarkerPillFocusChanged = onMarkerPillFocusChanged,
             introSkipCountdownRun = introSkipCountdownRun,
@@ -3150,6 +3170,7 @@ private fun TvPlayerIdleOverlay(
     playbackSpeed: Double = 1.0,
     /** True while the intro skip pill owns the focus the transport would take. */
     yieldTransportFocus: Boolean = false,
+    onMoveUpToSkipPill: (() -> Unit)? = null,
 ) {
     val scrubberFocus = remember { FocusRequester() }
     val playPauseFocus = remember { FocusRequester() }
@@ -3318,6 +3339,7 @@ private fun TvPlayerIdleOverlay(
                     )
                 },
                 onExitWhenIdle = onClose,
+                onMoveUpToSkipPill = onMoveUpToSkipPill,
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -4359,6 +4381,8 @@ private fun TvPlayerOverlays(
     onManualMarkerSelect: () -> Unit,
     /** Left/Right on a focused skip pill; see [TvIntroAutoSkipBanner]'s onSeek. */
     onSkipPillSeek: (direction: Int, hold: Boolean) -> Unit,
+    skipPillFocus: FocusRequester,
+    onSkipPillMoveDown: (() -> Unit)?,
     /** Whether each skip pill holds focus, so focus can be placed when it hides. */
     onIntroPillFocusChanged: (Boolean) -> Unit,
     onMarkerPillFocusChanged: (Boolean) -> Unit,
@@ -4575,6 +4599,8 @@ private fun TvPlayerOverlays(
                             // The intro pill arrives with the controls and takes
                             // focus, so one press reveals it and the next skips.
                             autoFocus = manualSkipTarget.kind == ManualMarkerKind.Intro,
+                            pillFocus = skipPillFocus,
+                            onMoveDown = onSkipPillMoveDown,
                         )
                     }
                     TvIntroAutoSkipBanner(
@@ -4589,6 +4615,8 @@ private fun TvPlayerOverlays(
                         // scrubber commits its seek on focus loss, so taking
                         // focus here would land a seek they never confirmed.
                         mayTakeFocus = introBannerMayTakeFocus,
+                        pillFocus = skipPillFocus,
+                        onMoveDown = onSkipPillMoveDown,
                     )
                 }
             }

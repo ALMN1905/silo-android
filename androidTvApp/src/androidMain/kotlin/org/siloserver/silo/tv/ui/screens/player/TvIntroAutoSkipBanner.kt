@@ -94,6 +94,10 @@ fun TvIntroAutoSkipBanner(
      * does not take focus out from under them.
      */
     mayTakeFocus: Boolean = true,
+    /** Lets the progress bar send focus up to the pill. */
+    pillFocus: FocusRequester? = null,
+    /** Non-null while the controls are up: Down moves from the pill to the progress bar. */
+    onMoveDown: (() -> Unit)? = null,
 ) {
     // Keyed on the state kind so the per-second ticks recompose this slot rather
     // than recreating the subtree, which would restart the fill.
@@ -127,6 +131,8 @@ fun TvIntroAutoSkipBanner(
                     onSelect = onSelect,
                     onSeek = onSeek,
                     autoFocus = mayTakeFocus,
+                    pillFocus = pillFocus,
+                    onMoveDown = onMoveDown,
                 )
             }
             else -> {
@@ -137,6 +143,8 @@ fun TvIntroAutoSkipBanner(
                     onSelect = onSelect,
                     onSeek = onSeek,
                     autoFocus = mayTakeFocus,
+                    pillFocus = pillFocus,
+                    onMoveDown = onMoveDown,
                 )
             }
         }
@@ -162,6 +170,8 @@ private fun TvIntroPromptPill(
     onSeek: (direction: Int, hold: Boolean) -> Unit,
     autoFocus: Boolean,
     caption: String? = null,
+    pillFocus: FocusRequester? = null,
+    onMoveDown: (() -> Unit)? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
@@ -196,11 +206,18 @@ private fun TvIntroPromptPill(
                 .background(Color.Black.copy(alpha = 0.65f), shape)
                 .border(BorderStroke(2.dp, borderColor), shape)
                 .focusRequester(focusRequester)
+                .then(if (pillFocus != null) Modifier.focusRequester(pillFocus) else Modifier)
                 // With the controls up, Left/Right reach the focused pill rather
                 // than the player's remote bridge. Seek as they do with the
                 // controls hidden instead of searching for focus away from the
                 // pill: a skip control must not block seeking (silo-android#926).
                 .onPreviewKeyEvent { event ->
+                    // The pill sits in its own layer, where the focus search
+                    // finds nothing below it, so Down is wired explicitly.
+                    if (event.key == Key.DirectionDown && onMoveDown != null) {
+                        if (event.type == KeyEventType.KeyDown) onMoveDown()
+                        return@onPreviewKeyEvent true
+                    }
                     val direction = when (event.key) {
                         Key.DirectionLeft -> -1
                         Key.DirectionRight -> 1
@@ -256,8 +273,18 @@ fun TvMarkerSkipPill(
     onSeek: (direction: Int, hold: Boolean) -> Unit,
     modifier: Modifier = Modifier,
     autoFocus: Boolean = false,
+    pillFocus: FocusRequester? = null,
+    onMoveDown: (() -> Unit)? = null,
 ) {
     Box(modifier) {
-        TvIntroPromptPill(label = label, progress = 0f, onSelect = onSelect, onSeek = onSeek, autoFocus = autoFocus)
+        TvIntroPromptPill(
+            label = label,
+            progress = 0f,
+            onSelect = onSelect,
+            onSeek = onSeek,
+            autoFocus = autoFocus,
+            pillFocus = pillFocus,
+            onMoveDown = onMoveDown,
+        )
     }
 }

@@ -149,6 +149,8 @@ fun TvPlayerScrubber(
     playbackSpeed: Double = 1.0,
     onMoveDownToTransport: () -> Unit,
     onExitWhenIdle: () -> Unit,
+    /** Non-null while a skip pill sits above the bar for Up to reach. */
+    onMoveUpToSkipPill: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -329,6 +331,13 @@ fun TvPlayerScrubber(
                             if (nativeRepeat > 1) return@onPreviewKeyEvent true
                             pendingTapDirection = direction
                             true
+                        }
+                        Key.DirectionUp -> {
+                            val toPill = onMoveUpToSkipPill
+                            if (toPill != null && isDown) {
+                                toPill()
+                                true
+                            } else false
                         }
                         Key.DirectionDown -> {
                             if (isDown) {
