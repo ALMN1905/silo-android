@@ -1132,10 +1132,10 @@ private fun TvGeneralSettingsPane(
                     checked = state.showAudiobooksTab,
                     onCheckedChange = onShowAudiobooksTabChanged,
                 )
-                TvLibraryTabsPerLibraryRow()
                 SettingsFooterText(
                     text = stringResource(CommonR.string.settings_topMenu_footer),
                 )
+                TvLibraryTabsPerLibraryRow()
                 SettingsFooterText(
                     text = stringResource(CommonR.string.settings_topMenu_tabPerLibrary_footer),
                 )
