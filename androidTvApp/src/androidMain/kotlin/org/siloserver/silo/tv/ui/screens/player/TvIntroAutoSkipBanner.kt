@@ -255,9 +255,8 @@ fun TvMarkerSkipPill(
     onSelect: () -> Unit,
     onSeek: (direction: Int, hold: Boolean) -> Unit,
     modifier: Modifier = Modifier,
-    autoFocus: Boolean = false,
 ) {
     Box(modifier) {
-        TvIntroPromptPill(label = label, progress = 0f, onSelect = onSelect, onSeek = onSeek, autoFocus = autoFocus)
+        TvIntroPromptPill(label = label, progress = 0f, onSelect = onSelect, onSeek = onSeek, autoFocus = false)
     }
 }
