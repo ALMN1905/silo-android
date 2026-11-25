@@ -109,8 +109,10 @@ fun CatalogGrid(
     // The session density picks the base cell; the server-driven poster-size
     // preference multiplies it, shifting the adaptive column count.
     val cardWidth = if (backdropCards) {
-        // Two columns on a phone, more on a tablet.
-        150.dp * LocalCardPresentation.current.posterSize.posterScale
+        // The Home row's card width: a wide card's badges keep their size, so a
+        // narrower one makes them collide. One column on an upright phone, more
+        // on wider screens.
+        280.dp * LocalCardPresentation.current.posterSize.posterScale
     } else {
         viewDensity.minCardWidth * LocalCardPresentation.current.posterSize.posterScale
     }
