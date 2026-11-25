@@ -3157,6 +3157,7 @@ private fun TvPlayerIdleOverlay(
 ) {
     val scrubberFocus = remember { FocusRequester() }
     val playPauseFocus = remember { FocusRequester() }
+    val firstSecondaryFocus = remember { FocusRequester() }
     var idleOverlayHasFocus by remember { mutableStateOf(false) }
     // Observed per ROW, not for the overlay as a whole. `idleOverlayHasFocus` is
     // hasFocus on the overlay's root, so it is already true whenever ANY control
@@ -3170,7 +3171,9 @@ private fun TvPlayerIdleOverlay(
     LaunchedEffect(focusRequest.nonce) {
         val overlayTarget = when (focusRequest.target) {
             TvIdleOverlayFocusTarget.Scrubber -> scrubberFocus
-            TvIdleOverlayFocusTarget.Transport -> playPauseFocus
+            // Inside a skippable intro, recap or credits the controls open on
+            // the skip button, which then shows its name.
+            TvIdleOverlayFocusTarget.Transport -> if (onSkip != null) firstSecondaryFocus else playPauseFocus
         }
         requestFocusUntilObserved(
             maxAttempts = TvContentInitialFocusMaxAttempts,
@@ -3183,6 +3186,22 @@ private fun TvPlayerIdleOverlay(
                 }
             },
         )
+    }
+
+    // The skip button takes its focus with it when its range ends; give it back
+    // to Play/Pause so the remote is not left without a target.
+    var skipButtonWasShown by remember { mutableStateOf(false) }
+    LaunchedEffect(onSkip != null) {
+        if (onSkip == null && skipButtonWasShown) {
+            withFrameNanos { }
+            if (!transportHasFocus && !scrubberHasFocus) {
+                playPauseFocus.claimFocusOrReport(
+                    target = "player_transport",
+                    action = "skip_button_removed",
+                )
+            }
+        }
+        skipButtonWasShown = onSkip != null
     }
 
     Box(
@@ -3339,6 +3358,7 @@ private fun TvPlayerIdleOverlay(
                 onOpenHUD = onOpenHUD,
                 onClose = onClose,
                 playPauseFocus = playPauseFocus,
+                firstSecondaryFocus = firstSecondaryFocus,
                 onMoveUpToScrubber = {
                     scrubberFocus.claimFocusOrReport(
                         target = "player_scrubber",

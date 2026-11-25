@@ -92,12 +92,14 @@ fun TvPlayerTransportCluster(
     skipForwardSeconds: Int = 30,
     // What the Subtitles button reveals when focused ("English", "Off").
     subtitlesValue: String? = null,
+    // The first button of the right-hand group: the skip button while it shows,
+    // so the caller can start focus on it.
+    firstSecondaryFocus: FocusRequester = remember { FocusRequester() },
 ) {
     // The groups sit at opposite ends of the row. Left/Right cross the gap
     // between them explicitly; a plain search from skip-forward can land on
     // the scrubber above instead.
     val skipForwardFocus = remember { FocusRequester() }
-    val firstSecondaryFocus = remember { FocusRequester() }
     Row(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
