@@ -142,6 +142,7 @@ import org.siloserver.silo.common.player.NoticeTone
 import org.siloserver.silo.common.player.PlayerNotice
 import org.siloserver.silo.common.player.video.markerSkipTarget
 import org.siloserver.silo.common.player.video.MarkerSkipTarget
+import org.siloserver.silo.common.player.video.ManualMarkerKind
 import org.siloserver.silo.common.player.video.skipLabelRes
 import org.siloserver.silo.common.player.SessionState
 import org.siloserver.silo.common.player.rememberPlayerSpinnerVisible
@@ -664,10 +665,14 @@ fun TvPlayerScreen(
 
     val qualityOfferVisible = lowerQuality != null &&
         !state.showControls && !state.hudOpen && !state.showNextUp
+    // An intro gets the timed prompt first; after it the skip pill comes back
+    // only with the controls, so a missed prompt can still be skipped without
+    // leaving a pill over the picture for the whole intro. Recap and Credits
+    // keep their always-on pill. Same rule as the phone.
     val manualSkipTarget = tvManualMarkerSkipTarget(
         activeMarkerSkipTarget, canSeekInRoom, visibleIntroSkipState.isVisible,
         state.isLoading || state.error != null, qualityOfferVisible,
-    )
+    )?.takeIf { it.kind != ManualMarkerKind.Intro || state.showControls }
     val latestManualSkipTarget by rememberUpdatedState(manualSkipTarget)
     // The intro, recap and credits skip pills and Next Up outrank the
     // buffering pill: it hides (its timer frozen) while any of them shows.
@@ -2489,6 +2494,7 @@ fun TvPlayerScreen(
                         },
                         onCancelScrub = { viewModel.cancelScrub() },
                         focusRequest = idleOverlayFocusRequest,
+                        yieldTransportFocus = manualSkipTarget?.kind == ManualMarkerKind.Intro,
                         onPlayPause = {
                             // In a room every press goes to the room, which
                             // applies it or refuses with a notice, like the
@@ -3142,6 +3148,8 @@ private fun TvPlayerIdleOverlay(
      */
     canToggleAfterCommit: Boolean = true,
     playbackSpeed: Double = 1.0,
+    /** True while the intro skip pill owns the focus the transport would take. */
+    yieldTransportFocus: Boolean = false,
 ) {
     val scrubberFocus = remember { FocusRequester() }
     val playPauseFocus = remember { FocusRequester() }
@@ -3156,6 +3164,9 @@ private fun TvPlayerIdleOverlay(
     var scrubberHasFocus by remember { mutableStateOf(false) }
     var transportHasFocus by remember { mutableStateOf(false) }
     LaunchedEffect(focusRequest.nonce) {
+        if (yieldTransportFocus && focusRequest.target == TvIdleOverlayFocusTarget.Transport) {
+            return@LaunchedEffect
+        }
         val overlayTarget = when (focusRequest.target) {
             TvIdleOverlayFocusTarget.Scrubber -> scrubberFocus
             TvIdleOverlayFocusTarget.Transport -> playPauseFocus
@@ -4561,6 +4572,9 @@ private fun TvPlayerOverlays(
                             label = stringResource(manualSkipTarget.kind.skipLabelRes()),
                             onSelect = onManualMarkerSelect,
                             onSeek = onSkipPillSeek,
+                            // The intro pill arrives with the controls and takes
+                            // focus, so one press reveals it and the next skips.
+                            autoFocus = manualSkipTarget.kind == ManualMarkerKind.Intro,
                         )
                     }
                     TvIntroAutoSkipBanner(
