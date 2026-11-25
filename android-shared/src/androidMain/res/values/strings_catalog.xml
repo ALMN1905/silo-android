@@ -7595,5 +7595,5 @@
     <!-- Settings > Playback, Dialogue boost value: the centre channel is raised by this many decibels. -->
     <string name="settings_dialogueBoost_value">+%1$d dB</string>
     <!-- Settings > Playback, help text under Dialogue boost. -->
-    <string name="settings_dialogueBoost_footer">Raises the centre channel only, so voices stand out on stereo and 3.x setups. It changes decoded audio; stereo tracks and audio sent to a receiver as passthrough are not changed.</string>
+    <string name="settings_dialogueBoost_footer">Makes voices louder in surround audio. Stereo tracks and passthrough audio are not changed.</string>
 </resources>

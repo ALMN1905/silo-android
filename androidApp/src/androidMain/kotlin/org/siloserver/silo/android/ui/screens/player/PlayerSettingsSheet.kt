@@ -167,6 +167,7 @@ fun PlayerSettingsSheet(
                             onClick = { routeOrdinal = SettingsRoute.Sync.ordinal },
                             separator = true,
                         )
+                        DialogueBoostStepperRow()
                     }
 
                     PlayerSectionHeader(stringResource(CommonR.string.player_settings_sectionSession))
@@ -277,7 +278,6 @@ fun PlayerSettingsSheet(
                             onDecrease = { onSetAudioDelay((audioDelayMs - 50).coerceIn(-5000, 5000)) },
                             onIncrease = { onSetAudioDelay((audioDelayMs + 50).coerceIn(-5000, 5000)) },
                         )
-                        DialogueBoostStepperRow()
                         PlayerStepperRow(
                             label = stringResource(CommonR.string.player_settings_subtitleDelay),
                             detail = stringResource(
@@ -382,6 +382,7 @@ private fun DialogueBoostStepperRow() {
     PlayerStepperRow(
         label = stringResource(CommonR.string.settings_dialogueBoost_title),
         detail = stringResource(CommonR.string.settings_dialogueBoost_footer),
+        separator = true,
         value = if (gainDb == 0) {
             stringResource(CommonR.string.settings_dialogueBoost_off)
         } else {
