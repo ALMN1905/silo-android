@@ -878,7 +878,7 @@ private fun formatAudioSubtitle(resources: Resources, track: AudioTrack): String
     track.channelLayout?.let { parts.add(it) }
         ?: track.channels?.let { parts.add(resources.getString(CommonR.string.detail_channels, LocaleFormat.integer(it))) }
     track.bitrate?.let { br ->
-        if (br > 0) parts.add(resources.getString(CommonR.string.detail_bitrateKbps, LocaleFormat.integer(br / 1000)))
+        if (br > 0) parts.add(resources.getString(CommonR.string.detail_bitrateKbps, LocaleFormat.integer(br)))
     }
     return parts.joinToString(" \u00B7 ")
 }
